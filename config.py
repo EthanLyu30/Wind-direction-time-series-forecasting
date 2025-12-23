@@ -1,8 +1,28 @@
 """
 配置文件：定义所有超参数和路径配置
+支持自动检测GPU，适配本地Windows和远程Linux服务器训练
 """
 import os
+import sys
 import torch
+
+# ==================== 设备自动检测 ====================
+def get_device():
+    """自动检测并返回最佳可用设备"""
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+        gpu_name = torch.cuda.get_device_name(0)
+        gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+        print(f"🚀 检测到GPU: {gpu_name} ({gpu_memory:.1f}GB)")
+        return device
+    else:
+        print("💻 使用CPU训练（建议在GPU服务器上运行以加速）")
+        return torch.device('cpu')
+
+# ==================== 平台检测 ====================
+IS_WINDOWS = sys.platform == 'win32'
+IS_LINUX = sys.platform.startswith('linux')
+print(f"📍 运行平台: {'Windows' if IS_WINDOWS else 'Linux' if IS_LINUX else sys.platform}")
 
 # ==================== 路径配置 ====================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -59,12 +79,27 @@ VAL_RATIO = 0.2
 TEST_RATIO = 0.1
 
 # ==================== 训练配置 ====================
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-BATCH_SIZE = 64
+DEVICE = get_device()
+
+# 根据设备自动调整batch_size
+# GPU可以使用更大的batch_size加速训练
+if torch.cuda.is_available():
+    gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+    if gpu_memory >= 10:  # RTX 3060 有12GB显存
+        BATCH_SIZE = 128
+    elif gpu_memory >= 6:
+        BATCH_SIZE = 64
+    else:
+        BATCH_SIZE = 32
+else:
+    BATCH_SIZE = 64  # CPU默认
+
 LEARNING_RATE = 0.001
 NUM_EPOCHS = 100
 EARLY_STOPPING_PATIENCE = 15
 WEIGHT_DECAY = 1e-5
+
+print(f"⚙️  Batch Size: {BATCH_SIZE}")
 
 # ==================== 模型配置 ====================
 # Linear模型配置

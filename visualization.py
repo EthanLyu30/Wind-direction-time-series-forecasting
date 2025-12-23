@@ -7,8 +7,15 @@
 4. 模型对比可视化
 """
 import os
+import sys
 import numpy as np
 import pandas as pd
+
+# 在无图形界面的服务器上使用Agg后端
+import matplotlib
+if sys.platform.startswith('linux') and not os.environ.get('DISPLAY'):
+    matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.font_manager import FontProperties
@@ -17,8 +24,12 @@ warnings.filterwarnings('ignore')
 
 from config import RESULTS_DIR, TARGET_COL
 
-# 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Arial Unicode MS']
+# 设置中文字体（兼容不同系统）
+if sys.platform == 'win32':
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
+else:
+    # Linux服务器可能没有中文字体，使用英文
+    plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
 plt.rcParams['axes.unicode_minus'] = False
 
 # 设置样式
