@@ -201,8 +201,9 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
+    # PyTorch 2.x 中 ReduceLROnPlateau 移除了 verbose 参数
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=5, verbose=verbose
+        optimizer, mode='min', factor=0.5, patience=5
     )
     
     early_stopping = EarlyStopping(patience=EARLY_STOPPING_PATIENCE, mode='min')

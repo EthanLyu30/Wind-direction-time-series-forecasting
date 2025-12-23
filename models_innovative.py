@@ -427,7 +427,8 @@ class WaveNetBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, dilation):
         super(WaveNetBlock, self).__init__()
         
-        padding = (kernel_size - 1) * dilation // 2
+        # 使用padding='same'风格，确保输出长度与输入一致
+        padding = (kernel_size - 1) * dilation
         
         self.dilated_conv = nn.Conv1d(in_channels, out_channels * 2, kernel_size,
                                        padding=padding, dilation=dilation)
@@ -435,6 +436,7 @@ class WaveNetBlock(nn.Module):
         self.skip_conv = nn.Conv1d(out_channels, out_channels, 1)
         
         self.bn = nn.BatchNorm1d(out_channels * 2)
+        self.chomp_size = padding  # 需要裁剪的大小
     
     def forward(self, x):
         """
@@ -442,6 +444,9 @@ class WaveNetBlock(nn.Module):
             x: (batch, channels, length)
         """
         conv_out = self.dilated_conv(x)
+        # 裁剪多余的padding以保持因果性
+        if self.chomp_size > 0:
+            conv_out = conv_out[:, :, :-self.chomp_size]
         conv_out = self.bn(conv_out)
         
         # 门控激活

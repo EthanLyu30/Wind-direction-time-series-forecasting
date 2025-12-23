@@ -26,15 +26,16 @@ from config import (
 )
 
 
-def load_parquet_data(data_path):
+def load_parquet_data(data_path, height_value):
     """
     加载parquet格式的数据
     
     Args:
         data_path: 数据目录路径
+        height_value: 高度值 (10, 50, 或 100)
         
     Returns:
-        合并后的DataFrame
+        合并后的DataFrame (包含height列)
     """
     train_file = os.path.join(data_path, 'train-00000-of-00001.parquet')
     val_file = os.path.join(data_path, 'val-00000-of-00001.parquet')
@@ -47,7 +48,10 @@ def load_parquet_data(data_path):
             dfs.append(df)
     
     if dfs:
-        return pd.concat(dfs, ignore_index=True)
+        combined = pd.concat(dfs, ignore_index=True)
+        # 确保添加正确的height值（有些数据集可能没有height列，或值不正确）
+        combined['height'] = height_value
+        return combined
     else:
         raise FileNotFoundError(f"No parquet files found in {data_path}")
 
@@ -61,15 +65,20 @@ def load_all_data():
     """
     all_dfs = []
     
+    # height_value 映射: '10m' -> 10, '50m' -> 50, '100m' -> 100
     for height, path in DATA_PATHS.items():
-        print(f"加载 {height} 高度数据...")
-        df = load_parquet_data(path)
+        # 从路径key提取数值 (例如 '10m' -> 10)
+        height_value = int(height.replace('m', ''))
+        print(f"加载 {height} 高度数据 (height={height_value})...")
+        df = load_parquet_data(path, height_value)
         print(f"  - 数据形状: {df.shape}")
+        print(f"  - height列值: {df['height'].unique()}")
         all_dfs.append(df)
     
     # 合并所有数据
     combined_df = pd.concat(all_dfs, ignore_index=True)
     print(f"\n合并后数据形状: {combined_df.shape}")
+    print(f"合并后height值: {combined_df['height'].unique()}")
     
     return combined_df
 
@@ -235,18 +244,25 @@ def pivot_by_height(df):
     """
     df = df.copy()
     
+    # 确保height列是整数类型
+    df[HEIGHT_COL] = df[HEIGHT_COL].astype(int)
+    
     # 选择需要的列
     base_cols = [TIMESTAMP_COL, HEIGHT_COL, TARGET_COL] + FEATURE_COLS
-    df_subset = df[base_cols].copy()
+    available_cols = [c for c in base_cols if c in df.columns]
+    df_subset = df[available_cols].copy()
     
     # 按时间戳和高度分组，取平均值（处理重复值）
     df_subset = df_subset.groupby([TIMESTAMP_COL, HEIGHT_COL]).mean().reset_index()
     
     # 透视表
     pivoted_dfs = []
-    for col in [TARGET_COL] + FEATURE_COLS:
+    cols_to_pivot = [TARGET_COL] + FEATURE_COLS
+    cols_to_pivot = [c for c in cols_to_pivot if c in df_subset.columns]
+    
+    for col in cols_to_pivot:
         pivot = df_subset.pivot(index=TIMESTAMP_COL, columns=HEIGHT_COL, values=col)
-        pivot.columns = [f'{col}_{h}m' for h in pivot.columns]
+        pivot.columns = [f'{col}_{int(h)}m' for h in pivot.columns]
         pivoted_dfs.append(pivot)
     
     result = pd.concat(pivoted_dfs, axis=1)
