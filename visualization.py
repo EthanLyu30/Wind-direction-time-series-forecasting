@@ -18,25 +18,65 @@ if sys.platform.startswith('linux') and not os.environ.get('DISPLAY'):
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.font_manager import FontProperties
+from matplotlib.font_manager import FontProperties, fontManager
 import warnings
 warnings.filterwarnings('ignore')
 
 from config import RESULTS_DIR, TARGET_COL
 
-# 设置中文字体（兼容不同系统）
-if sys.platform == 'win32':
-    plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
-else:
-    # Linux服务器可能没有中文字体，使用英文
-    plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
-plt.rcParams['axes.unicode_minus'] = False
+# ==================== 字体配置 ====================
+def setup_chinese_font():
+    """设置中文字体，确保在Windows/Linux上都能正确显示"""
+    chinese_fonts = []
+    
+    if sys.platform == 'win32':
+        # Windows系统常见中文字体
+        font_candidates = [
+            'Microsoft YaHei',   # 微软雅黑
+            'SimHei',            # 黑体
+            'SimSun',            # 宋体
+            'KaiTi',             # 楷体
+            'FangSong',          # 仿宋
+        ]
+    else:
+        # Linux系统
+        font_candidates = [
+            'WenQuanYi Micro Hei',
+            'WenQuanYi Zen Hei', 
+            'Noto Sans CJK SC',
+            'Droid Sans Fallback',
+            'DejaVu Sans',
+        ]
+    
+    # 获取系统已安装的字体
+    available_fonts = set([f.name for f in fontManager.ttflist])
+    
+    # 找到可用的中文字体
+    for font in font_candidates:
+        if font in available_fonts:
+            chinese_fonts.append(font)
+    
+    if chinese_fonts:
+        plt.rcParams['font.sans-serif'] = chinese_fonts + ['DejaVu Sans', 'Arial']
+        print(f"📝 使用字体: {chinese_fonts[0]}")
+    else:
+        plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
+        print("⚠️ 未找到中文字体，使用默认字体（中文可能显示为方框）")
+    
+    # 解决负号显示问题
+    plt.rcParams['axes.unicode_minus'] = False
+    
+    return chinese_fonts[0] if chinese_fonts else 'DejaVu Sans'
+
+# 初始化字体
+MAIN_FONT = setup_chinese_font()
 
 # 设置样式
 sns.set_style("whitegrid")
 plt.rcParams['figure.figsize'] = (12, 6)
 plt.rcParams['figure.dpi'] = 100
-
+plt.rcParams['savefig.dpi'] = 150
+plt.rcParams['savefig.bbox'] = 'tight'
 
 def plot_dataset_overview(df, save_path=None):
     """
