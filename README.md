@@ -75,6 +75,66 @@ python main.py --mode eval
 python main.py --mode visualize
 ```
 
+### 🖥️ 服务器训练（推荐）
+
+```bash
+# 基础训练（禁用可视化，避免Qt/GUI问题）
+python main.py --mode train --no-viz
+
+# 指定训练参数
+python main.py --mode train --no-viz --epochs 200 --patience 25 --batch-size 256
+
+# 只训练特定模型
+python main.py --mode train --no-viz --models LSTM Transformer WaveNet
+
+# 继续训练已有模型（迭代优化，不从头开始）
+python main.py --mode train --no-viz --resume --epochs 300
+
+# 调整学习率
+python main.py --mode train --no-viz --lr 0.0005
+```
+
+### 命令行参数
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--mode` | 运行模式 | `all` |
+| `--no-viz` | 禁用可视化 | `False` |
+| `--models` | 指定模型 | 全部 |
+| `--tasks` | 指定任务 | 全部 |
+| `--epochs` | 训练轮数 | `100` |
+| `--batch-size` | 批次大小 | 自动 |
+| `--lr` | 学习率 | `0.001` |
+| `--patience` | 早停耐心值 | `15` |
+| `--resume` | 继续训练 | `False` |
+
+### 🔄 早停机制说明
+
+本项目采用**早停（Early Stopping）**机制防止过拟合：
+
+- **原理**：监控验证集损失，当连续 `patience` 个 epoch 验证损失不再下降时，停止训练
+- **最佳模型保存**：每次验证损失改善时都会保存模型，确保最终得到的是最优模型
+- **实际训练轮数**：即使设置 `--epochs 300`，实际可能只训练 30-50 个 epoch 就会早停
+
+```
+# 训练过程示例
+Epoch 1/300 - val_loss: 0.0150 - ✓ 保存最佳模型
+Epoch 2/300 - val_loss: 0.0120 - ✓ 保存最佳模型  
+Epoch 3/300 - val_loss: 0.0115 - ✓ 保存最佳模型
+...
+Epoch 25/300 - val_loss: 0.0108 - 连续15轮无改善，早停！
+```
+
+**迭代优化建议**：
+1. 使用 `--resume` 从上次最佳模型继续训练
+2. 增大 `--patience` 给模型更多机会（如 `--patience 30`）
+3. 降低 `--lr` 进行精细调优（如 `--lr 0.0005`）
+
+```bash
+# 迭代优化示例
+python main.py --mode train --no-viz --resume --epochs 500 --patience 30 --lr 0.0005
+```
+
 ## 🧠 模型介绍
 
 ### 基础模型 (75%评分要求)

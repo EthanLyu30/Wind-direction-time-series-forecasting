@@ -221,44 +221,51 @@ class AttentionLSTMModel(nn.Module):
 
 
 class Chomp1d(nn.Module):
-    """用于因果卷积的裁剪层"""
+    """用于因果卷积的裁剪层 - 优化版本"""
     def __init__(self, chomp_size):
         super(Chomp1d, self).__init__()
         self.chomp_size = chomp_size
     
     def forward(self, x):
-        return x[:, :, :-self.chomp_size].contiguous()
+        if self.chomp_size == 0:
+            return x
+        return x[:, :, :-self.chomp_size]
 
 
 class TemporalBlock(nn.Module):
-    """TCN的基本模块"""
+    """TCN的基本模块 - 优化版本"""
     
     def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2):
         super(TemporalBlock, self).__init__()
         
-        self.conv1 = nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride, 
-                               padding=padding, dilation=dilation)
-        self.chomp1 = Chomp1d(padding)
-        self.relu1 = nn.ReLU()
-        self.dropout1 = nn.Dropout(dropout)
-        
-        self.conv2 = nn.Conv1d(n_outputs, n_outputs, kernel_size, stride=stride,
-                               padding=padding, dilation=dilation)
-        self.chomp2 = Chomp1d(padding)
-        self.relu2 = nn.ReLU()
-        self.dropout2 = nn.Dropout(dropout)
-        
+        # 使用更高效的网络结构
         self.net = nn.Sequential(
-            self.conv1, self.chomp1, self.relu1, self.dropout1,
-            self.conv2, self.chomp2, self.relu2, self.dropout2
+            nn.Conv1d(n_inputs, n_outputs, kernel_size, stride=stride, 
+                      padding=padding, dilation=dilation),
+            nn.BatchNorm1d(n_outputs),  # 添加 BatchNorm 加速收敛
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Conv1d(n_outputs, n_outputs, kernel_size, stride=stride,
+                      padding=padding, dilation=dilation),
+            nn.BatchNorm1d(n_outputs),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout)
         )
         
+        self.chomp = Chomp1d(padding * 2)  # 两层卷积，需要裁剪两倍
         self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
-        self.relu = nn.ReLU()
+        self.relu = nn.ReLU(inplace=True)
     
     def forward(self, x):
         out = self.net(x)
+        # 裁剪以保持因果性
+        out = self.chomp(out)
         res = x if self.downsample is None else self.downsample(x)
+        # 确保维度匹配
+        if out.size(2) != res.size(2):
+            min_len = min(out.size(2), res.size(2))
+            out = out[:, :, :min_len]
+            res = res[:, :, :min_len]
         return self.relu(out + res)
 
 
@@ -422,21 +429,21 @@ class EnsembleModel(nn.Module):
 
 
 class WaveNetBlock(nn.Module):
-    """WaveNet风格的残差块"""
+    """WaveNet风格的残差块 - 优化版本"""
     
     def __init__(self, in_channels, out_channels, kernel_size, dilation):
         super(WaveNetBlock, self).__init__()
         
-        # 使用padding='same'风格，确保输出长度与输入一致
-        padding = (kernel_size - 1) * dilation
+        # 使用更简单的 padding 策略
+        self.padding = (kernel_size - 1) * dilation
         
         self.dilated_conv = nn.Conv1d(in_channels, out_channels * 2, kernel_size,
-                                       padding=padding, dilation=dilation)
+                                       padding=self.padding, dilation=dilation)
+        self.bn = nn.BatchNorm1d(out_channels * 2)
         self.res_conv = nn.Conv1d(out_channels, in_channels, 1)
         self.skip_conv = nn.Conv1d(out_channels, out_channels, 1)
         
-        self.bn = nn.BatchNorm1d(out_channels * 2)
-        self.chomp_size = padding  # 需要裁剪的大小
+        self.out_channels = out_channels
     
     def forward(self, x):
         """
@@ -445,18 +452,16 @@ class WaveNetBlock(nn.Module):
         """
         conv_out = self.dilated_conv(x)
         # 裁剪多余的padding以保持因果性
-        if self.chomp_size > 0:
-            conv_out = conv_out[:, :, :-self.chomp_size]
+        if self.padding > 0:
+            conv_out = conv_out[:, :, :-self.padding]
         conv_out = self.bn(conv_out)
         
-        # 门控激活
-        tanh_out = torch.tanh(conv_out[:, :conv_out.size(1)//2, :])
-        sigmoid_out = torch.sigmoid(conv_out[:, conv_out.size(1)//2:, :])
-        gated = tanh_out * sigmoid_out
+        # 门控激活 - 使用 chunk 更高效
+        filter_out, gate_out = conv_out.chunk(2, dim=1)
+        gated = torch.tanh(filter_out) * torch.sigmoid(gate_out)
         
         # 残差连接
-        res = self.res_conv(gated)
-        res = res + x
+        res = self.res_conv(gated) + x
         
         # Skip连接
         skip = self.skip_conv(gated)

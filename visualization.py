@@ -11,10 +11,36 @@ import sys
 import numpy as np
 import pandas as pd
 
-# 在无图形界面的服务器上使用Agg后端
+# ==================== 解决服务器无图形界面问题 ====================
+# 必须在导入matplotlib.pyplot之前设置后端
 import matplotlib
-if sys.platform.startswith('linux') and not os.environ.get('DISPLAY'):
+
+def _is_headless():
+    """检测是否为无头服务器环境"""
+    # Windows通常有图形界面
+    if sys.platform == 'win32':
+        return False
+    # Linux/Mac 检查DISPLAY环境变量
+    if not os.environ.get('DISPLAY'):
+        return True
+    # 检查是否在SSH会话中（无X11转发）
+    if os.environ.get('SSH_CONNECTION') and not os.environ.get('DISPLAY'):
+        return True
+    # 检查QT_QPA_PLATFORM是否设置为offscreen
+    if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+        return True
+    return False
+
+# 如果是无头服务器，强制使用Agg后端
+if _is_headless():
     matplotlib.use('Agg')
+    os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+else:
+    # 尝试使用Agg后端以避免Qt问题（更安全）
+    try:
+        matplotlib.use('Agg')
+    except:
+        pass
 
 import matplotlib.pyplot as plt
 import seaborn as sns

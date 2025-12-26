@@ -9,13 +9,28 @@
 6. 保存模型为pth格式
 
 使用方法：
-    python main.py                    # 运行完整实验
-    python main.py --mode train       # 仅训练
-    python main.py --mode eval        # 仅评估（需要已训练模型）
-    python main.py --mode visualize   # 仅可视化
+    python main.py                           # 运行完整实验
+    python main.py --mode train              # 仅训练
+    python main.py --mode eval               # 仅评估（需要已训练模型）
+    python main.py --mode visualize          # 仅可视化
+    python main.py --no-viz                  # 禁用可视化（服务器推荐）
+    python main.py --mode train --no-viz     # 仅训练，不生成图表
+    python main.py --batch-size 256          # 指定batch size
+    python main.py --epochs 200              # 指定训练轮数
+    python main.py --resume                  # 从检查点继续训练
+    python main.py --models LSTM Transformer # 只训练指定模型
 """
 import os
 import sys
+
+# ==================== 解决服务器无图形界面问题（必须最先执行）====================
+# 在无头Linux服务器上设置环境变量，避免Qt插件错误
+if sys.platform.startswith('linux'):
+    if not os.environ.get('DISPLAY'):
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+        import matplotlib
+        matplotlib.use('Agg')
+
 import argparse
 import json
 import torch
@@ -31,7 +46,7 @@ from config import (
     SINGLE_STEP_INPUT_LEN, SINGLE_STEP_OUTPUT_LEN,
     MULTI_STEP_1_INPUT_LEN, MULTI_STEP_1_OUTPUT_LEN,
     MULTI_STEP_2_INPUT_LEN, MULTI_STEP_2_OUTPUT_LEN,
-    set_seed, RANDOM_SEED
+    set_seed, RANDOM_SEED, LEARNING_RATE, EARLY_STOPPING_PATIENCE
 )
 from data_loader import (
     load_all_data, preprocess_data, create_dataloaders,
@@ -49,6 +64,46 @@ from visualization import (
     plot_multistep_predictions, plot_model_comparison,
     plot_error_distribution, create_results_summary_table
 )
+
+
+# ==================== 全局运行配置（可被命令行参数覆盖）====================
+class RuntimeConfig:
+    """运行时配置，可以被命令行参数动态覆盖"""
+    def __init__(self):
+        self.batch_size = BATCH_SIZE
+        self.num_epochs = NUM_EPOCHS
+        self.learning_rate = LEARNING_RATE
+        self.early_stopping_patience = EARLY_STOPPING_PATIENCE
+        self.enable_visualization = True  # 是否启用可视化
+        self.resume_training = False  # 是否从检查点继续训练
+        self.selected_models = None  # 指定要训练的模型列表
+        
+    def update_from_args(self, args):
+        """从命令行参数更新配置"""
+        if args.batch_size is not None:
+            self.batch_size = args.batch_size
+            print(f"⚙️  Batch Size 已覆盖为: {self.batch_size}")
+        if args.epochs is not None:
+            self.num_epochs = args.epochs
+            print(f"⚙️  训练轮数已覆盖为: {self.num_epochs}")
+        if args.lr is not None:
+            self.learning_rate = args.lr
+            print(f"⚙️  学习率已覆盖为: {self.learning_rate}")
+        if args.patience is not None:
+            self.early_stopping_patience = args.patience
+            print(f"⚙️  早停耐心值已覆盖为: {self.early_stopping_patience}")
+        if args.no_viz:
+            self.enable_visualization = False
+            print("📊 可视化已禁用（仅保存数据，不生成图表）")
+        if hasattr(args, 'resume') and args.resume:
+            self.resume_training = True
+            print("🔄 启用继续训练模式（从已有检查点恢复）")
+        if args.models is not None:
+            self.selected_models = args.models
+            print(f"📋 仅训练指定模型: {', '.join(args.models)}")
+
+# 全局运行时配置实例
+runtime_config = RuntimeConfig()
 
 
 # 定义任务配置
@@ -90,8 +145,10 @@ def setup_experiment():
     print("=" * 70)
     print(f"设备: {DEVICE}")
     print(f"随机种子: {RANDOM_SEED}")
-    print(f"批次大小: {BATCH_SIZE}")
-    print(f"最大训练轮数: {NUM_EPOCHS}")
+    print(f"批次大小: {runtime_config.batch_size}")
+    print(f"最大训练轮数: {runtime_config.num_epochs}")
+    print(f"学习率: {runtime_config.learning_rate}")
+    print(f"可视化: {'启用' if runtime_config.enable_visualization else '禁用'}")
     print("=" * 70)
 
 
@@ -127,6 +184,10 @@ def load_and_preprocess_data():
 
 def visualize_dataset(df):
     """可视化数据集"""
+    if not runtime_config.enable_visualization:
+        print("\n[跳过] 数据集可视化（已禁用）")
+        return
+        
     print("\n" + "=" * 70)
     print("步骤2: 数据集可视化")
     print("=" * 70)
@@ -161,12 +222,12 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
         print(f"任务: {task_config['description']}")
         print(f"{'='*50}")
         
-        # 创建数据加载器
+        # 创建数据加载器（使用runtime_config中的batch_size）
         input_len = task_config['input_len']
         output_len = task_config['output_len']
         
         train_loader, val_loader, test_loader, scaler_features, scaler_targets, feature_cols, target_cols = \
-            create_dataloaders(df, input_len, output_len, BATCH_SIZE)
+            create_dataloaders(df, input_len, output_len, runtime_config.batch_size)
         
         num_features = len(feature_cols)
         num_targets = len(target_cols)
@@ -184,20 +245,24 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
             
             print(f"模型参数量: {count_parameters(model):,}")
             
-            # 训练
+            # 训练（使用runtime_config中的参数）
             history = train_model(
                 model, train_loader, val_loader,
                 model_name=model_name,
                 task_name=task_name,
-                num_epochs=NUM_EPOCHS,
+                num_epochs=runtime_config.num_epochs,
+                learning_rate=runtime_config.learning_rate,
+                patience=runtime_config.early_stopping_patience,
                 device=DEVICE,
                 save_best=True,
-                verbose=True
+                verbose=True,
+                resume=runtime_config.resume_training  # 支持继续训练
             )
             
-            # 绘制训练历史
-            history_save_path = os.path.join(RESULTS_DIR, f'{model_name}_{task_name}_history.png')
-            plot_training_history(history, model_name, task_name, save_path=history_save_path)
+            # 绘制训练历史（可选）
+            if runtime_config.enable_visualization:
+                history_save_path = os.path.join(RESULTS_DIR, f'{model_name}_{task_name}_history.png')
+                plot_training_history(history, model_name, task_name, save_path=history_save_path)
             
             # 测试
             metrics, metrics_per_target, predictions, targets = test_model(
@@ -216,20 +281,21 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
                 'history': history
             }
             
-            # 可视化预测结果
-            pred_save_path = os.path.join(RESULTS_DIR, f'{model_name}_{task_name}_predictions.png')
-            plot_predictions(targets, predictions, model_name, task_name, target_cols, 
-                           num_samples=200, save_path=pred_save_path)
-            
-            scatter_save_path = os.path.join(RESULTS_DIR, f'{model_name}_{task_name}_scatter.png')
-            plot_prediction_scatter(targets, predictions, model_name, task_name, target_cols,
-                                  save_path=scatter_save_path)
-            
-            # 对于多步预测，额外绘制多步预测图
-            if output_len > 1:
-                multistep_save_path = os.path.join(RESULTS_DIR, f'{model_name}_{task_name}_multistep.png')
-                plot_multistep_predictions(targets, predictions, model_name, task_name,
-                                         save_path=multistep_save_path)
+            # 可视化预测结果（可选）
+            if runtime_config.enable_visualization:
+                pred_save_path = os.path.join(RESULTS_DIR, f'{model_name}_{task_name}_predictions.png')
+                plot_predictions(targets, predictions, model_name, task_name, target_cols, 
+                               num_samples=200, save_path=pred_save_path)
+                
+                scatter_save_path = os.path.join(RESULTS_DIR, f'{model_name}_{task_name}_scatter.png')
+                plot_prediction_scatter(targets, predictions, model_name, task_name, target_cols,
+                                      save_path=scatter_save_path)
+                
+                # 对于多步预测，额外绘制多步预测图
+                if output_len > 1:
+                    multistep_save_path = os.path.join(RESULTS_DIR, f'{model_name}_{task_name}_multistep.png')
+                    plot_multistep_predictions(targets, predictions, model_name, task_name,
+                                             save_path=multistep_save_path)
         
         all_results[task_name] = task_results
     
@@ -262,14 +328,15 @@ def evaluate_and_compare(all_results):
     print("\n模型性能对比:")
     print(results_df.to_string(index=False))
     
-    # 绘制对比图
-    for metric in ['MSE', 'RMSE', 'MAE', 'R2']:
-        comparison_save_path = os.path.join(RESULTS_DIR, f'comparison_{metric}.png')
-        plot_model_comparison(results_df, metric=metric, save_path=comparison_save_path)
-    
-    # 创建汇总表格
-    table_save_path = os.path.join(RESULTS_DIR, 'results_summary_table.png')
-    create_results_summary_table(comparison_dict, save_path=table_save_path)
+    # 绘制对比图（可选）
+    if runtime_config.enable_visualization:
+        for metric in ['MSE', 'RMSE', 'MAE', 'R2']:
+            comparison_save_path = os.path.join(RESULTS_DIR, f'comparison_{metric}.png')
+            plot_model_comparison(results_df, metric=metric, save_path=comparison_save_path)
+        
+        # 创建汇总表格
+        table_save_path = os.path.join(RESULTS_DIR, 'results_summary_table.png')
+        create_results_summary_table(comparison_dict, save_path=table_save_path)
     
     return results_df
 
@@ -288,8 +355,9 @@ def generate_report(results_df, all_results):
         
         f.write("## 1. 实验配置\n\n")
         f.write(f"- 设备: {DEVICE}\n")
-        f.write(f"- 批次大小: {BATCH_SIZE}\n")
-        f.write(f"- 最大训练轮数: {NUM_EPOCHS}\n")
+        f.write(f"- 批次大小: {runtime_config.batch_size}\n")
+        f.write(f"- 最大训练轮数: {runtime_config.num_epochs}\n")
+        f.write(f"- 学习率: {runtime_config.learning_rate}\n")
         f.write(f"- 随机种子: {RANDOM_SEED}\n\n")
         
         f.write("## 2. 任务配置\n\n")
@@ -346,6 +414,9 @@ def generate_report(results_df, all_results):
 
 def main(args):
     """主函数"""
+    # 从命令行参数更新运行时配置
+    runtime_config.update_from_args(args)
+    
     setup_experiment()
     
     if args.mode in ['all', 'train', 'visualize']:
@@ -359,26 +430,46 @@ def main(args):
     if args.mode in ['all', 'train']:
         df = load_and_preprocess_data() if 'df' not in dir() else df
         
+        # 确定要训练的模型
+        if runtime_config.selected_models:
+            # 用户指定了模型
+            selected_base = [m for m in runtime_config.selected_models if m in BASE_MODELS]
+            selected_innovative = [m for m in runtime_config.selected_models if m in INNOVATIVE_MODELS]
+            
+            # 检查是否有无效的模型名
+            all_valid_models = BASE_MODELS + INNOVATIVE_MODELS
+            invalid_models = [m for m in runtime_config.selected_models if m not in all_valid_models]
+            if invalid_models:
+                print(f"⚠️ 未知模型: {invalid_models}")
+                print(f"   可用模型: {all_valid_models}")
+        else:
+            selected_base = BASE_MODELS
+            selected_innovative = INNOVATIVE_MODELS
+        
+        all_results = {}
+        
         # 训练基础模型
-        base_results = train_all_models(df, BASE_MODELS, is_innovative=False)
+        if selected_base:
+            base_results = train_all_models(df, selected_base, is_innovative=False)
+            for task_name in base_results:
+                if task_name not in all_results:
+                    all_results[task_name] = {}
+                all_results[task_name].update(base_results[task_name])
         
         # 训练创新模型
-        innovative_results = train_all_models(df, INNOVATIVE_MODELS, is_innovative=True)
-        
-        # 合并结果
-        all_results = {}
-        for task_name in TASKS.keys():
-            all_results[task_name] = {}
-            if task_name in base_results:
-                all_results[task_name].update(base_results[task_name])
-            if task_name in innovative_results:
+        if selected_innovative:
+            innovative_results = train_all_models(df, selected_innovative, is_innovative=True)
+            for task_name in innovative_results:
+                if task_name not in all_results:
+                    all_results[task_name] = {}
                 all_results[task_name].update(innovative_results[task_name])
         
         # 评估和对比
-        results_df = evaluate_and_compare(all_results)
-        
-        # 生成报告
-        generate_report(results_df, all_results)
+        if all_results:
+            results_df = evaluate_and_compare(all_results)
+            
+            # 生成报告
+            generate_report(results_df, all_results)
     
     if args.mode == 'eval':
         # 仅评估（需要已训练的模型）
@@ -398,9 +489,21 @@ if __name__ == "__main__":
                        choices=['all', 'train', 'eval', 'visualize'],
                        help='运行模式: all(完整实验), train(仅训练), eval(仅评估), visualize(仅可视化)')
     parser.add_argument('--models', type=str, nargs='+', default=None,
-                       help='指定要训练的模型（可选）')
+                       help='指定要训练的模型，如: --models LSTM Transformer')
     parser.add_argument('--tasks', type=str, nargs='+', default=None,
-                       help='指定要运行的任务（可选）')
+                       help='指定要运行的任务，如: --tasks singlestep multistep_1h')
+    parser.add_argument('--no-viz', action='store_true',
+                       help='禁用可视化图表生成（服务器训练推荐）')
+    parser.add_argument('--batch-size', type=int, default=None,
+                       help='覆盖默认的batch size')
+    parser.add_argument('--epochs', type=int, default=None,
+                       help='覆盖默认的训练轮数')
+    parser.add_argument('--lr', type=float, default=None,
+                       help='覆盖默认的学习率')
+    parser.add_argument('--patience', type=int, default=None,
+                       help='早停的耐心值')
+    parser.add_argument('--resume', action='store_true',
+                       help='从已有检查点继续训练（迭代优化模型）')
     
     args = parser.parse_args()
     main(args)

@@ -4,6 +4,14 @@
 """
 import os
 import sys
+# ==================== 解决服务器无图形界面问题（必须最先执行）====================
+# 在无头Linux服务器上设置环境变量，避免Qt插件错误
+if sys.platform.startswith('linux'):
+    if not os.environ.get('DISPLAY'):
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+        # 设置matplotlib后端为Agg（如果还没设置）
+        import matplotlib
+        matplotlib.use('Agg')
 import torch
 
 # ==================== 设备自动检测 ====================
@@ -145,8 +153,9 @@ ATTENTION_LSTM_CONFIG = {
 }
 
 # TCN (Temporal Convolutional Network) 配置
+# 优化版本：减少通道数以加快训练速度
 TCN_CONFIG = {
-    'num_channels': [64, 128, 256],
+    'num_channels': [32, 64, 64],  # 减少通道数
     'kernel_size': 3,
     'dropout': 0.2,
 }
