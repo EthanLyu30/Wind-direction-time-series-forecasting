@@ -101,6 +101,11 @@ class RuntimeConfig:
         if args.models is not None:
             self.selected_models = args.models
             print(f"📋 仅训练指定模型: {', '.join(args.models)}")
+        if hasattr(args, 'tasks') and args.tasks is not None:
+            self.selected_tasks = args.tasks
+            print(f"📋 仅训练指定任务: {', '.join(args.tasks)}")
+        else:
+            self.selected_tasks = None
 
 # 全局运行时配置实例
 runtime_config = RuntimeConfig()
@@ -111,17 +116,17 @@ TASKS = {
     'singlestep': {
         'input_len': SINGLE_STEP_INPUT_LEN,
         'output_len': SINGLE_STEP_OUTPUT_LEN,
-        'description': '单步预测（8小时→1小时）'
+        'description': f'单步预测（{SINGLE_STEP_INPUT_LEN}小时→{SINGLE_STEP_OUTPUT_LEN}小时）'
     },
     'multistep_1h': {
         'input_len': MULTI_STEP_1_INPUT_LEN,
         'output_len': MULTI_STEP_1_OUTPUT_LEN,
-        'description': '多步预测（8小时→1小时）'
+        'description': f'多步预测（{MULTI_STEP_1_INPUT_LEN}小时→{MULTI_STEP_1_OUTPUT_LEN}小时）'
     },
     'multistep_16h': {
         'input_len': MULTI_STEP_2_INPUT_LEN,
         'output_len': MULTI_STEP_2_OUTPUT_LEN,
-        'description': '多步预测（8小时→16小时）'
+        'description': f'多步预测（{MULTI_STEP_2_INPUT_LEN}小时→{MULTI_STEP_2_OUTPUT_LEN}小时）'
     }
 }
 
@@ -448,9 +453,12 @@ def main(args):
         
         all_results = {}
         
+        # 确定要运行的任务
+        selected_tasks = runtime_config.selected_tasks if hasattr(runtime_config, 'selected_tasks') and runtime_config.selected_tasks else None
+        
         # 训练基础模型
         if selected_base:
-            base_results = train_all_models(df, selected_base, is_innovative=False)
+            base_results = train_all_models(df, selected_base, tasks_to_run=selected_tasks, is_innovative=False)
             for task_name in base_results:
                 if task_name not in all_results:
                     all_results[task_name] = {}
@@ -458,7 +466,7 @@ def main(args):
         
         # 训练创新模型
         if selected_innovative:
-            innovative_results = train_all_models(df, selected_innovative, is_innovative=True)
+            innovative_results = train_all_models(df, selected_innovative, tasks_to_run=selected_tasks, is_innovative=True)
             for task_name in innovative_results:
                 if task_name not in all_results:
                     all_results[task_name] = {}

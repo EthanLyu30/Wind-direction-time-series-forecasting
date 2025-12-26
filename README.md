@@ -135,6 +135,42 @@ Epoch 25/300 - val_loss: 0.0108 - 连续15轮无改善，早停！
 python main.py --mode train --no-viz --resume --epochs 500 --patience 30 --lr 0.0005
 ```
 
+### 💡 长期预测（multistep_16h）优化建议
+
+长期预测任务（预测未来16小时）本身难度很大，R²=0.4~0.5 属于正常水平。以下是优化策略：
+
+**1. 删除旧模型重新训练（使用增强配置）**
+```bash
+# 删除旧的16h模型，重新用增强配置训练
+rm models/*multistep_16h.pth
+python main.py --mode train --no-viz --tasks multistep_16h --epochs 300 --patience 50
+```
+
+**2. 使用更小学习率精细调优**
+```bash
+# 继续训练，降低学习率
+python main.py --mode train --no-viz --resume --tasks multistep_16h --epochs 500 --lr 0.0003 --patience 40
+```
+
+**3. 推荐训练顺序**
+```bash
+# 第一阶段：基础训练（所有模型）
+python main.py --mode train --no-viz --epochs 150 --patience 25
+
+# 第二阶段：精细调优短期预测
+python main.py --mode train --no-viz --resume --tasks singlestep multistep_1h --epochs 300 --lr 0.0005
+
+# 第三阶段：重点优化长期预测
+python main.py --mode train --no-viz --resume --tasks multistep_16h --epochs 500 --lr 0.0003 --patience 50
+```
+
+**评估标准参考**：
+| 任务 | 优秀 | 良好 | 一般 |
+|------|------|------|------|
+| singlestep | R² > 0.92 | R² > 0.85 | R² > 0.75 |
+| multistep_1h | R² > 0.90 | R² > 0.85 | R² > 0.75 |
+| multistep_16h | R² > 0.55 | R² > 0.40 | R² > 0.30 |
+
 ## 🧠 模型介绍
 
 ### 基础模型 (75%评分要求)

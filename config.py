@@ -77,8 +77,8 @@ SINGLE_STEP_OUTPUT_LEN = 1  # 输出序列长度（1小时）
 MULTI_STEP_1_INPUT_LEN = 8
 MULTI_STEP_1_OUTPUT_LEN = 1
 
-# 多步预测配置 - 任务2：8小时预测16小时
-MULTI_STEP_2_INPUT_LEN = 8
+# 多步预测配置 - 任务2：24小时预测16小时（增加输入窗口改善长期预测）
+MULTI_STEP_2_INPUT_LEN = 24  # 增加到24小时，提供更多历史信息
 MULTI_STEP_2_OUTPUT_LEN = 16
 
 # ==================== 数据集划分配置 ====================
@@ -118,20 +118,20 @@ LINEAR_CONFIG = {
 
 # LSTM模型配置
 LSTM_CONFIG = {
-    'hidden_size': 128,
-    'num_layers': 2,
-    'dropout': 0.2,
+    'hidden_size': 256,      # 增大隐藏层（原128）
+    'num_layers': 3,         # 增加层数（原2）
+    'dropout': 0.3,          # 增加dropout防止过拟合
     'bidirectional': True,
 }
 
 # Transformer模型配置
 TRANSFORMER_CONFIG = {
-    'd_model': 64,
-    'nhead': 4,
-    'num_encoder_layers': 3,
-    'num_decoder_layers': 3,
-    'dim_feedforward': 256,
-    'dropout': 0.1,
+    'd_model': 128,            # 增大模型维度（原64）
+    'nhead': 8,                # 增加注意力头数（原4）
+    'num_encoder_layers': 4,   # 增加层数（原3）
+    'num_decoder_layers': 4,   # 增加层数（原3）
+    'dim_feedforward': 512,    # 增大前馈层（原256）
+    'dropout': 0.2,            # 增加dropout
 }
 
 # ==================== 创新模型配置 ====================

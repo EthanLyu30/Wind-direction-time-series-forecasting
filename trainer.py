@@ -215,17 +215,47 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         try:
             # PyTorch 2.6+ 需要设置 weights_only=False 来加载包含 numpy 数组的检查点
             checkpoint = torch.load(model_path, map_location=device, weights_only=False)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            if 'history' in checkpoint:
-                previous_history = checkpoint['history']
-                # 从上次训练结束的epoch继续
-                start_epoch = len(previous_history.get('train_loss', []))
-            if verbose:
-                prev_best_loss = previous_history.get('best_val_loss', 'N/A') if previous_history else 'N/A'
-                prev_best_epoch = previous_history.get('best_epoch', 'N/A') if previous_history else 'N/A'
-                print(f"✅ 从检查点恢复: {model_path}")
-                print(f"   已完成 {start_epoch} 个epoch")
-                print(f"   之前最佳验证损失: {prev_best_loss:.4f if isinstance(prev_best_loss, float) else prev_best_loss} (epoch {prev_best_epoch})")
+            
+            # 检查模型结构是否兼容
+            checkpoint_state = checkpoint['model_state_dict']
+            current_state = model.state_dict()
+            
+            # 比较参数形状是否匹配
+            compatible = True
+            for key in current_state.keys():
+                if key in checkpoint_state:
+                    if current_state[key].shape != checkpoint_state[key].shape:
+                        compatible = False
+                        if verbose:
+                            print(f"⚠️ 模型结构已更改，参数 '{key}' 形状不匹配:")
+                            print(f"   检查点: {checkpoint_state[key].shape} → 当前模型: {current_state[key].shape}")
+                        break
+                else:
+                    compatible = False
+                    if verbose:
+                        print(f"⚠️ 模型结构已更改，缺少参数: '{key}'")
+                    break
+            
+            if compatible:
+                model.load_state_dict(checkpoint_state)
+                if 'history' in checkpoint:
+                    previous_history = checkpoint['history']
+                    # 从上次训练结束的epoch继续
+                    start_epoch = len(previous_history.get('train_loss', []))
+                if verbose:
+                    prev_best_loss = previous_history.get('best_val_loss', 'N/A') if previous_history else 'N/A'
+                    prev_best_epoch = previous_history.get('best_epoch', 'N/A') if previous_history else 'N/A'
+                    # 格式化最佳损失值
+                    loss_str = f"{prev_best_loss:.4f}" if isinstance(prev_best_loss, (int, float)) else str(prev_best_loss)
+                    print(f"✅ 从检查点恢复: {model_path}")
+                    print(f"   已完成 {start_epoch} 个epoch")
+                    print(f"   之前最佳验证损失: {loss_str} (epoch {prev_best_epoch})")
+            else:
+                if verbose:
+                    print(f"⚠️ 配置已更改，检查点不兼容，从头开始训练新模型")
+                start_epoch = 0
+                previous_history = None
+                
         except Exception as e:
             if verbose:
                 print(f"⚠️ 无法加载检查点，从头开始训练: {e}")
@@ -236,9 +266,14 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=actual_lr, weight_decay=WEIGHT_DECAY)
-    # PyTorch 2.x 中 ReduceLROnPlateau 移除了 verbose 参数
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=5
+    
+    # 使用 CosineAnnealingWarmRestarts 学习率调度器（更适合长期训练）
+    # 结合 ReduceLROnPlateau 作为后备
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=10, T_mult=2, eta_min=actual_lr * 0.01
+    )
+    plateau_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', factor=0.5, patience=8
     )
     
     early_stopping = EarlyStopping(patience=actual_patience, mode='min')
@@ -301,14 +336,19 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         history['val_loss'].append(val_loss)
         history['val_metrics'].append(val_metrics)
         
-        # 更新学习率
-        scheduler.step(val_loss)
+        # 更新学习率（使用余弦退火 + 平台检测双调度器）
+        scheduler.step(actual_epoch)
+        plateau_scheduler.step(val_loss)
+        
+        # 获取当前学习率
+        current_lr = optimizer.param_groups[0]['lr']
         
         # 更新进度条
         progress_bar.set_postfix({
             'train_loss': f'{train_loss:.4f}',
             'val_loss': f'{val_loss:.4f}',
-            'val_rmse': f'{val_metrics["RMSE"]:.4f}'
+            'val_rmse': f'{val_metrics["RMSE"]:.4f}',
+            'lr': f'{current_lr:.6f}'
         })
         
         # 检查是否为最佳模型
