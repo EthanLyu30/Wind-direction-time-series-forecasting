@@ -46,7 +46,8 @@ from config import (
     SINGLE_STEP_INPUT_LEN, SINGLE_STEP_OUTPUT_LEN,
     MULTI_STEP_1_INPUT_LEN, MULTI_STEP_1_OUTPUT_LEN,
     MULTI_STEP_2_INPUT_LEN, MULTI_STEP_2_OUTPUT_LEN,
-    set_seed, RANDOM_SEED, LEARNING_RATE, EARLY_STOPPING_PATIENCE
+    set_seed, RANDOM_SEED, LEARNING_RATE, EARLY_STOPPING_PATIENCE,
+    TASK_SPECIFIC_HYPERPARAMS, get_adjusted_lr
 )
 from data_loader import (
     load_all_data, preprocess_data, create_dataloaders,
@@ -239,6 +240,27 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
         
         task_results = {}
         
+        # 导入任务特定的超参
+        from config import TASK_SPECIFIC_HYPERPARAMS, get_adjusted_lr
+        
+        # 获取任务特定的超参（如果用户没有手动指定，则使用任务推荐值）
+        task_config = TASK_SPECIFIC_HYPERPARAMS.get(task_name, {})
+        
+        # 确定最终超参优先级：用户指定 > 任务推荐 > 全局默认
+        final_lr = runtime_config.learning_rate if runtime_config.learning_rate != LEARNING_RATE else task_config.get('lr', LEARNING_RATE)
+        final_patience = runtime_config.early_stopping_patience if runtime_config.early_stopping_patience != EARLY_STOPPING_PATIENCE else task_config.get('patience', EARLY_STOPPING_PATIENCE)
+        final_epochs = runtime_config.num_epochs
+        
+        # 如果batch_size被改为256，自动调整学习率下降（0.0002太低了！）
+        if runtime_config.batch_size == 256 and final_lr == 0.0002:
+            final_lr = 0.0005  # 自动纠正：256时改为0.0005
+            print(f"⚠️  检测到batch_size=256，学习率自动从0.0002调整为0.0005（太低会导致欠拟合）")
+        
+        # 如果用户用了resume但没有调整学习率，建议降低
+        if runtime_config.resume_training and runtime_config.learning_rate == LEARNING_RATE:
+            final_lr = task_config.get('lr', final_lr)
+            print(f"💡 继续训练模式：使用任务优化学习率 {final_lr}")
+        
         for model_name in model_list:
             print(f"\n--- 训练 {model_name} ---")
             
@@ -250,14 +272,15 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
             
             print(f"模型参数量: {count_parameters(model):,}")
             
-            # 训练（使用runtime_config中的参数）
+            # 训练（使用任务特定的超参）
+            print(f"📊 使用超参: lr={final_lr:.6f}, patience={final_patience}, epochs={final_epochs}")
             history = train_model(
                 model, train_loader, val_loader,
                 model_name=model_name,
                 task_name=task_name,
-                num_epochs=runtime_config.num_epochs,
-                learning_rate=runtime_config.learning_rate,
-                patience=runtime_config.early_stopping_patience,
+                num_epochs=final_epochs,
+                learning_rate=final_lr,  # 使用任务优化后的学习率
+                patience=final_patience,  # 使用任务优化后的早停
                 device=DEVICE,
                 save_best=True,
                 verbose=True,
@@ -324,8 +347,33 @@ def evaluate_and_compare(all_results):
     # 创建对比DataFrame
     results_df = compare_models(comparison_dict)
     
-    # 保存结果
+    # ==================== 合并现有结果（不覆盖）====================
     results_csv_path = os.path.join(RESULTS_DIR, 'model_comparison.csv')
+    
+    if os.path.exists(results_csv_path):
+        # 读取现有结果
+        existing_df = pd.read_csv(results_csv_path)
+        print(f"📂 发现现有结果文件，将合并更新...")
+        
+        # 合并：新结果覆盖旧结果中相同的Model+Task组合
+        for _, new_row in results_df.iterrows():
+            mask = (existing_df['Model'] == new_row['Model']) & (existing_df['Task'] == new_row['Task'])
+            if mask.any():
+                # 更新现有行
+                existing_df.loc[mask, ['MSE', 'RMSE', 'MAE', 'R2']] = new_row[['MSE', 'RMSE', 'MAE', 'R2']].values
+            else:
+                # 添加新行
+                existing_df = pd.concat([existing_df, pd.DataFrame([new_row])], ignore_index=True)
+        
+        results_df = existing_df
+        print(f"✅ 已合并 {len(results_df)} 条模型结果")
+    
+    # 按Task和Model排序
+    task_order = ['singlestep', 'multistep_1h', 'multistep_16h']
+    results_df['Task'] = pd.Categorical(results_df['Task'], categories=task_order, ordered=True)
+    results_df = results_df.sort_values(['Task', 'Model']).reset_index(drop=True)
+    
+    # 保存完整结果
     results_df.to_csv(results_csv_path, index=False, encoding='utf-8-sig')
     print(f"\n对比结果已保存至: {results_csv_path}")
     
@@ -354,64 +402,81 @@ def generate_report(results_df, all_results):
     
     report_path = os.path.join(RESULTS_DIR, 'experiment_report.md')
     
+    # 重新读取完整的CSV数据（包含合并后的所有模型）
+    results_csv_path = os.path.join(RESULTS_DIR, 'model_comparison.csv')
+    if os.path.exists(results_csv_path):
+        full_results_df = pd.read_csv(results_csv_path)
+    else:
+        full_results_df = results_df
+    
     with open(report_path, 'w', encoding='utf-8') as f:
-        f.write("# 风速序列预测实验报告\n\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        f.write("# Wind Speed Prediction Experiment Report\n\n")
+        f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         
-        f.write("## 1. 实验配置\n\n")
-        f.write(f"- 设备: {DEVICE}\n")
-        f.write(f"- 批次大小: {runtime_config.batch_size}\n")
-        f.write(f"- 最大训练轮数: {runtime_config.num_epochs}\n")
-        f.write(f"- 学习率: {runtime_config.learning_rate}\n")
-        f.write(f"- 随机种子: {RANDOM_SEED}\n\n")
+        f.write("## 1. Experiment Configuration\n\n")
+        f.write(f"- Device: {DEVICE}\n")
+        f.write(f"- Batch Size: {runtime_config.batch_size}\n")
+        f.write(f"- Max Epochs: {runtime_config.num_epochs}\n")
+        f.write(f"- Learning Rate: {runtime_config.learning_rate}\n")
+        f.write(f"- Random Seed: {RANDOM_SEED}\n\n")
         
-        f.write("## 2. 任务配置\n\n")
+        f.write("## 2. Task Configuration\n\n")
+        task_descriptions = {
+            'singlestep': 'Single-step Prediction (8h -> 1h)',
+            'multistep_1h': 'Multi-step Prediction (8h -> 1h)',
+            'multistep_16h': 'Multi-step Prediction (24h -> 16h)'
+        }
         for task_name, task_config in TASKS.items():
-            f.write(f"### {task_config['description']}\n")
-            f.write(f"- 输入长度: {task_config['input_len']}小时\n")
-            f.write(f"- 输出长度: {task_config['output_len']}小时\n\n")
+            desc = task_descriptions.get(task_name, task_config['description'])
+            f.write(f"### {desc}\n")
+            f.write(f"- Input Length: {task_config['input_len']} hours\n")
+            f.write(f"- Output Length: {task_config['output_len']} hours\n\n")
         
-        f.write("## 3. 模型性能对比\n\n")
-        f.write(results_df.to_markdown(index=False))
+        f.write("## 3. Model Performance Comparison\n\n")
+        f.write(full_results_df.to_markdown(index=False))
         f.write("\n\n")
         
-        f.write("## 4. 最佳模型\n\n")
+        f.write("## 4. Best Models\n\n")
         
         # 找出每个任务的最佳模型
-        for task in TASKS.keys():
-            task_results = results_df[results_df['Task'] == task]
+        for task in ['singlestep', 'multistep_1h', 'multistep_16h']:
+            task_results = full_results_df[full_results_df['Task'] == task]
             if len(task_results) > 0:
                 best_idx = task_results['RMSE'].idxmin()
                 best_model = task_results.loc[best_idx, 'Model']
                 best_rmse = task_results.loc[best_idx, 'RMSE']
-                f.write(f"- **{TASKS[task]['description']}**: {best_model} (RMSE: {best_rmse:.4f})\n")
+                best_r2 = task_results.loc[best_idx, 'R2']
+                desc = task_descriptions.get(task, task)
+                f.write(f"- **{desc}**: {best_model} (RMSE: {best_rmse:.4f}, R²: {best_r2:.4f})\n")
         
-        f.write("\n## 5. 创新点说明\n\n")
-        f.write("### 5.1 CNN-LSTM混合模型\n")
-        f.write("- 结合CNN的局部特征提取能力和LSTM的序列建模能力\n")
-        f.write("- 多尺度卷积核捕获不同时间尺度的特征\n")
-        f.write("- 注意力机制增强重要特征的权重\n\n")
+        f.write("\n## 5. Innovation Points\n\n")
+        f.write("### 5.1 CNN-LSTM Hybrid Model\n")
+        f.write("- Combines CNN's local feature extraction with LSTM's sequence modeling\n")
+        f.write("- Multi-scale convolution kernels capture features at different time scales\n")
+        f.write("- Attention mechanism enhances important feature weights\n\n")
         
-        f.write("### 5.2 Attention-LSTM模型\n")
-        f.write("- 自注意力机制增强特征表示\n")
-        f.write("- 时序注意力聚焦关键时间点\n")
-        f.write("- 多头注意力并行处理不同子空间的信息\n\n")
+        f.write("### 5.2 Attention-LSTM Model\n")
+        f.write("- Self-attention mechanism enhances feature representation\n")
+        f.write("- Temporal attention focuses on key time points\n")
+        f.write("- Multi-head attention processes different subspace information in parallel\n\n")
         
-        f.write("### 5.3 TCN模型\n")
-        f.write("- 因果卷积保证时序性\n")
-        f.write("- 膨胀卷积指数级扩大感受野\n")
-        f.write("- 残差连接稳定深层网络训练\n\n")
+        f.write("### 5.3 TCN Model\n")
+        f.write("- Causal convolution ensures temporal causality\n")
+        f.write("- Dilated convolution exponentially expands receptive field\n")
+        f.write("- Residual connections stabilize deep network training\n\n")
         
-        f.write("### 5.4 WaveNet模型\n")
-        f.write("- 门控激活单元增强表达能力\n")
-        f.write("- 膨胀因果卷积高效建模长序列\n")
-        f.write("- 残差和Skip连接加速梯度流动\n\n")
+        f.write("### 5.4 WaveNet Model\n")
+        f.write("- Gated activation units enhance expressive power\n")
+        f.write("- Dilated causal convolution efficiently models long sequences\n")
+        f.write("- Residual and Skip connections accelerate gradient flow\n\n")
         
-        f.write("## 6. 结论\n\n")
-        f.write("本实验对比了Linear、LSTM、Transformer三个基础模型和")
-        f.write("CNN-LSTM、Attention-LSTM、TCN、WaveNet四个创新模型在风速预测任务上的性能。\n\n")
-        f.write("实验结果表明，深度学习模型在捕获风速时序特征方面具有显著优势，")
-        f.write("特别是结合注意力机制的模型能够更好地捕获长期依赖关系。\n")
+        f.write("## 6. Conclusion\n\n")
+        f.write("This experiment compared Linear, LSTM, and Transformer as baseline models, ")
+        f.write("along with CNN-LSTM, Attention-LSTM, TCN, and WaveNet as innovative models ")
+        f.write("for wind speed prediction tasks.\n\n")
+        f.write("The results show that deep learning models have significant advantages ")
+        f.write("in capturing wind speed temporal features, especially models with attention ")
+        f.write("mechanisms that can better capture long-term dependencies.\n")
     
     print(f"实验报告已保存至: {report_path}")
     return report_path

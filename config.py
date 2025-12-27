@@ -107,6 +107,35 @@ NUM_EPOCHS = 100
 EARLY_STOPPING_PATIENCE = 15
 WEIGHT_DECAY = 1e-5
 
+# ==================== 任务特定的超参优化 ====================
+# 不同任务需要不同的学习率和早停耐心值
+TASK_SPECIFIC_HYPERPARAMS = {
+    'singlestep': {
+        'lr': 0.001,          # 短期预测：正常学习率
+        'patience': 15,       # 标准早停
+        'min_epochs': 50,     # 至少训练50个epoch
+    },
+    'multistep_1h': {
+        'lr': 0.0008,         # 多步1h：略降学习率
+        'patience': 18,       # 略宽松
+        'min_epochs': 60,
+    },
+    'multistep_16h': {
+        'lr': 0.0003,         # 长期预测：显著降低学习率（关键！）
+        'patience': 25,       # 宽松早停，允许更多探索
+        'min_epochs': 80,     # 至少训练80个epoch
+    }
+}
+
+# 根据batch_size自动调整学习率（线性缩放）
+def get_adjusted_lr(base_lr, batch_size):
+    """
+    根据batch_size调整学习率
+    线性缩放法则: lr = base_lr * (batch_size / 128)
+    """
+    reference_batch = 128
+    return base_lr * (batch_size / reference_batch)
+
 print(f"⚙️  Batch Size: {BATCH_SIZE}")
 
 # ==================== 模型配置 ====================

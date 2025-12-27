@@ -293,8 +293,11 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         history['val_loss'] = previous_history.get('val_loss', [])
         history['val_metrics'] = previous_history.get('val_metrics', [])
         history['best_epoch'] = previous_history.get('best_epoch', 0)
-        history['best_val_loss'] = previous_history.get('best_val_loss', float('inf'))
+        history['best_val_loss'] = previous_history.get('best_val_loss', float('inf'))  # 关键：保留历史最佳
         history['training_time'] = previous_history.get('training_time', 0)
+        
+        # 重要：记录历史最佳损失，用于后续对比
+        history['_historical_best_val_loss'] = history['best_val_loss']
     
     start_time = time.time()
     
@@ -343,6 +346,11 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         # 获取当前学习率
         current_lr = optimizer.param_groups[0]['lr']
         
+        # 警告：学习率过低导致训练停滞
+        if current_lr < 1e-6 and actual_epoch > 20:
+            if verbose and actual_epoch % 20 == 0:
+                print(f"⚠️  警告：学习率过低 ({current_lr:.2e})，可能导致训练停滞，建议增加学习率")
+        
         # 更新进度条
         progress_bar.set_postfix({
             'train_loss': f'{train_loss:.4f}',
@@ -368,19 +376,88 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     
     history['training_time'] = time.time() - start_time
     
+    # ==================== 关键修复：对比新旧最佳模型 ====================
+    # 只有当新的最好结果比历史更优时，才保存
+    should_save = True
+    history_improved = False
+    
+    if previous_history is not None:
+        prev_best_loss = previous_history.get('best_val_loss', float('inf'))
+        current_best_loss = history['best_val_loss']
+        
+        if verbose:
+            print(f"\n{'='*60}")
+            print(f"模型对比分析：")
+            print(f"  历史最佳验证损失: {prev_best_loss:.4f} (epoch {previous_history.get('best_epoch', '?')})")
+            print(f"  本次最佳验证损失: {current_best_loss:.4f} (epoch {history['best_epoch']})")
+            
+            improvement = prev_best_loss - current_best_loss
+            improvement_pct = (improvement / prev_best_loss) * 100 if prev_best_loss > 0 else 0
+            
+            if current_best_loss < prev_best_loss:
+                print(f"  ✅ 改进: {improvement:.4f} ({improvement_pct:.2f}%)")
+                history_improved = True
+            elif current_best_loss == prev_best_loss:
+                print(f"  ➡️  无变化")
+                history_improved = False
+            else:
+                print(f"  ❌ 下降: {abs(improvement):.4f} ({abs(improvement_pct):.2f}%)")
+                history_improved = False
+                should_save = False
+            print(f"{'='*60}\n")
+    
     # 保存模型
     if save_best:
         model_filename = f"{model_name}_{task_name}.pth"
         model_path = os.path.join(MODELS_DIR, model_filename)
-        torch.save({
-            'model_state_dict': model.state_dict(),
-            'model_name': model_name,
-            'task_name': task_name,
-            'history': history,
-            'total_epochs': len(history['train_loss']),
-        }, model_path)
-        if verbose:
-            print(f"\n模型已保存至: {model_path}")
+        
+        if should_save:
+            # 保存新模型
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'model_name': model_name,
+                'task_name': task_name,
+                'history': history,
+                'total_epochs': len(history['train_loss']),
+            }, model_path)
+            if verbose:
+                print(f"✅ 新模型已保存至: {model_path}")
+        else:
+            # 保留历史最好的模型，但更新训练历史
+            if os.path.exists(model_path) and previous_history is not None:
+                # 加载旧模型，但用新的完整训练历史更新它
+                checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+                merged_history = previous_history.copy()
+                # 合并新的训练记录
+                merged_history['train_loss'].extend(history['train_loss'])
+                merged_history['val_loss'].extend(history['val_loss'])
+                merged_history['val_metrics'].extend(history['val_metrics'])
+                merged_history['training_time'] += history['training_time']
+                
+                torch.save({
+                    'model_state_dict': checkpoint['model_state_dict'],  # 保留历史最好的权重
+                    'model_name': model_name,
+                    'task_name': task_name,
+                    'history': merged_history,  # 更新完整的训练历史
+                    'total_epochs': len(merged_history['train_loss']),
+                }, model_path)
+                if verbose:
+                    print(f"⚠️  本次训练未改进，保留历史最佳模型")
+                    print(f"   但已更新训练历史记录（总 {len(merged_history['train_loss'])} 个epoch）")
+                
+                # 用合并后的历史更新返回值
+                history = merged_history
+            else:
+                # 首次训练或无历史，直接保存
+                torch.save({
+                    'model_state_dict': model.state_dict(),
+                    'model_name': model_name,
+                    'task_name': task_name,
+                    'history': history,
+                    'total_epochs': len(history['train_loss']),
+                }, model_path)
+                if verbose:
+                    print(f"✅ 模型已保存至: {model_path}")
     
     if verbose:
         total_epochs = len(history['train_loss'])
