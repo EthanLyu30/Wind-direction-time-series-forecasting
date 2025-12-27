@@ -137,27 +137,35 @@ TRANSFORMER_CONFIG = {
 # ==================== 创新模型配置 ====================
 # CNN-LSTM混合模型配置
 CNN_LSTM_CONFIG = {
-    'cnn_channels': [32, 64],
+    'cnn_channels': [32, 32],      # 减少通道数（原[32,64]）
     'kernel_size': 3,
-    'lstm_hidden_size': 64,
-    'lstm_num_layers': 2,
-    'dropout': 0.2,
+    'lstm_hidden_size': 64,        # 减少隐藏单元（原64，已合理）
+    'lstm_num_layers': 2,          # 减少层数（原2，已合理）
+    'dropout': 0.3,                # 增加dropout防止过拟合（原0.2）
 }
 
 # Attention-LSTM模型配置
 ATTENTION_LSTM_CONFIG = {
-    'hidden_size': 128,
-    'num_layers': 2,
-    'attention_heads': 4,
-    'dropout': 0.2,
+    'hidden_size': 96,             # 减少隐藏单元（原128）
+    'num_layers': 2,               # 保持2层（足够了）
+    'attention_heads': 4,          # 减少头数（原4，已合理）
+    'dropout': 0.3,                # 增加dropout（原0.2）
 }
 
 # TCN (Temporal Convolutional Network) 配置
 # 优化版本：减少通道数以加快训练速度
 TCN_CONFIG = {
-    'num_channels': [32, 64, 64],  # 减少通道数
+    'num_channels': [32, 64, 64],  # 保持通道数（已优化）
     'kernel_size': 3,
-    'dropout': 0.2,
+    'dropout': 0.3,                # 增加dropout（原0.2）
+}
+
+# WaveNet模型配置
+WAVENET_CONFIG = {
+    'num_channels': 64,            # 减少通道数（原64，已合理）
+    'num_blocks': 8,               # 保持块数（8个已足够）
+    'kernel_size': 2,              # 保持卷积核（标准设置）
+    'dropout': 0.3,                # 增加dropout防止过拟合
 }
 
 # 集成模型配置
