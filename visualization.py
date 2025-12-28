@@ -11,10 +11,36 @@ import sys
 import numpy as np
 import pandas as pd
 
-# 在无图形界面的服务器上使用Agg后端
+# ==================== 解决服务器无图形界面问题 ====================
+# 必须在导入matplotlib.pyplot之前设置后端
 import matplotlib
-if sys.platform.startswith('linux') and not os.environ.get('DISPLAY'):
+
+def _is_headless():
+    """检测是否为无头服务器环境"""
+    # Windows通常有图形界面
+    if sys.platform == 'win32':
+        return False
+    # Linux/Mac 检查DISPLAY环境变量
+    if not os.environ.get('DISPLAY'):
+        return True
+    # 检查是否在SSH会话中（无X11转发）
+    if os.environ.get('SSH_CONNECTION') and not os.environ.get('DISPLAY'):
+        return True
+    # 检查QT_QPA_PLATFORM是否设置为offscreen
+    if os.environ.get('QT_QPA_PLATFORM') == 'offscreen':
+        return True
+    return False
+
+# 如果是无头服务器，强制使用Agg后端
+if _is_headless():
     matplotlib.use('Agg')
+    os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+else:
+    # 尝试使用Agg后端以避免Qt问题（更安全）
+    try:
+        matplotlib.use('Agg')
+    except:
+        pass
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -95,9 +121,9 @@ def plot_dataset_overview(df, save_path=None):
         if col_name in df.columns:
             ax1.plot(df.index[:500], df[col_name].values[:500], 
                     label=f'{height}m', alpha=0.8)
-    ax1.set_xlabel('样本索引')
-    ax1.set_ylabel('风速 (m/s)')
-    ax1.set_title('风速时间序列（前500个样本）')
+    ax1.set_xlabel('Sample Index')
+    ax1.set_ylabel('Wind Speed (m/s)')
+    ax1.set_title('Wind Speed Time Series (First 500 Samples)')
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     
@@ -108,9 +134,9 @@ def plot_dataset_overview(df, save_path=None):
         if col_name in df.columns:
             ax2.hist(df[col_name].dropna(), bins=50, alpha=0.5, 
                     label=f'{height}m')
-    ax2.set_xlabel('风速 (m/s)')
-    ax2.set_ylabel('频次')
-    ax2.set_title('风速分布')
+    ax2.set_xlabel('Wind Speed (m/s)')
+    ax2.set_ylabel('Frequency')
+    ax2.set_title('Wind Speed Distribution')
     ax2.legend()
     
     # 3. 特征相关性热图
@@ -120,7 +146,7 @@ def plot_dataset_overview(df, save_path=None):
         corr_matrix = df[feature_cols].corr()
         sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', 
                    ax=ax3, vmin=-1, vmax=1, center=0)
-        ax3.set_title('特征相关性矩阵')
+        ax3.set_title('Feature Correlation Matrix')
     
     # 4. 箱线图
     ax4 = axes[1, 1]
@@ -128,8 +154,8 @@ def plot_dataset_overview(df, save_path=None):
     speed_cols = [c for c in speed_cols if c in df.columns]
     if speed_cols:
         df[speed_cols].boxplot(ax=ax4)
-        ax4.set_ylabel('风速 (m/s)')
-        ax4.set_title('各高度风速箱线图')
+        ax4.set_ylabel('Wind Speed (m/s)')
+        ax4.set_title('Wind Speed Boxplot by Height')
     
     plt.tight_layout()
     
@@ -141,30 +167,44 @@ def plot_dataset_overview(df, save_path=None):
     plt.close()
 
 
-def plot_training_history(history, model_name, task_name, save_path=None):
+def plot_training_history(history, model_name, task_name, save_path=None, previous_epochs=0):
     """
-    绘制训练历史
+    绘制训练历史（包含所有微调过程）
     
     Args:
-        history: 训练历史字典
+        history: 训练历史字典（可能包含多次微调的历史）
         model_name: 模型名称
         task_name: 任务名称
         save_path: 保存路径
+        previous_epochs: 之前的训练轮数（用于标记微调分界点）
     """
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
     
     epochs = range(1, len(history['train_loss']) + 1)
     
     # 1. 损失曲线
     ax1 = axes[0]
-    ax1.plot(epochs, history['train_loss'], 'b-', label='训练损失', linewidth=2)
-    ax1.plot(epochs, history['val_loss'], 'r-', label='验证损失', linewidth=2)
-    ax1.axvline(x=history['best_epoch'], color='g', linestyle='--', 
-                label=f'最佳模型 (epoch {history["best_epoch"]})')
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('损失 (MSE)')
-    ax1.set_title(f'{model_name} - {task_name} 训练过程')
-    ax1.legend()
+    ax1.plot(epochs, history['train_loss'], 'b-', label='Train Loss', linewidth=2, alpha=0.8)
+    ax1.plot(epochs, history['val_loss'], 'r-', label='Val Loss', linewidth=2, alpha=0.8)
+    
+    # 标记最佳模型位置
+    best_epoch = history.get('best_epoch', 0)
+    if best_epoch > 0:
+        ax1.axvline(x=best_epoch, color='g', linestyle='--', linewidth=2,
+                    label=f'Best Model (epoch {best_epoch})')
+    
+    # 如果有微调分界点，标记出来
+    if previous_epochs > 0 and previous_epochs < len(history['train_loss']):
+        ax1.axvline(x=previous_epochs + 1, color='orange', linestyle=':', linewidth=1.5,
+                    label=f'Fine-tuning Start (epoch {previous_epochs + 1})', alpha=0.7)
+        # 添加背景色区分
+        ax1.axvspan(0, previous_epochs + 0.5, alpha=0.1, color='blue', label='Initial Training')
+        ax1.axvspan(previous_epochs + 0.5, len(history['train_loss']) + 0.5, alpha=0.1, color='orange', label='Fine-tuning')
+    
+    ax1.set_xlabel('Epoch', fontsize=12)
+    ax1.set_ylabel('Loss (MSE)', fontsize=12)
+    ax1.set_title(f'{model_name} - {task_name} Training History (Total: {len(history["train_loss"])} epochs)', fontsize=13)
+    ax1.legend(fontsize=10, loc='best')
     ax1.grid(True, alpha=0.3)
     
     # 2. 验证指标
@@ -175,17 +215,22 @@ def plot_training_history(history, model_name, task_name, save_path=None):
         
         ax2_twin = ax2.twinx()
         
-        line1 = ax2.plot(epochs, rmse_values, 'b-', label='RMSE', linewidth=2)
-        line2 = ax2_twin.plot(epochs, r2_values, 'g-', label='R²', linewidth=2)
+        line1 = ax2.plot(epochs, rmse_values, 'b-', label='RMSE', linewidth=2, alpha=0.8)
+        line2 = ax2_twin.plot(epochs, r2_values, 'g-', label='R²', linewidth=2, alpha=0.8)
         
-        ax2.set_xlabel('Epoch')
-        ax2.set_ylabel('RMSE', color='b')
-        ax2_twin.set_ylabel('R²', color='g')
-        ax2.set_title('验证集指标')
+        # 标记微调分界点
+        if previous_epochs > 0 and previous_epochs < len(history['val_metrics']):
+            ax2.axvline(x=previous_epochs + 1, color='orange', linestyle=':', linewidth=1.5,
+                        alpha=0.7)
+        
+        ax2.set_xlabel('Epoch', fontsize=12)
+        ax2.set_ylabel('RMSE', color='b', fontsize=12)
+        ax2_twin.set_ylabel('R²', color='g', fontsize=12)
+        ax2.set_title('Validation Metrics', fontsize=13)
         
         lines = line1 + line2
         labels = [l.get_label() for l in lines]
-        ax2.legend(lines, labels, loc='center right')
+        ax2.legend(lines, labels, loc='best', fontsize=10)
         ax2.grid(True, alpha=0.3)
     
     plt.tight_layout()
@@ -194,7 +239,6 @@ def plot_training_history(history, model_name, task_name, save_path=None):
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"图像已保存至: {save_path}")
     
-    plt.show()
     plt.close()
 
 
@@ -225,12 +269,12 @@ def plot_predictions(y_true, y_pred, model_name, task_name, target_names,
         
         x = range(len(true_vals))
         
-        ax.plot(x, true_vals, 'b-', label='真实值', linewidth=1.5, alpha=0.8)
-        ax.plot(x, pred_vals, 'r--', label='预测值', linewidth=1.5, alpha=0.8)
+        ax.plot(x, true_vals, 'b-', label='Actual', linewidth=1.5, alpha=0.8)
+        ax.plot(x, pred_vals, 'r--', label='Predicted', linewidth=1.5, alpha=0.8)
         ax.fill_between(x, true_vals, pred_vals, alpha=0.2, color='gray')
         
-        ax.set_xlabel('样本索引')
-        ax.set_ylabel('风速 (m/s)')
+        ax.set_xlabel('Sample Index')
+        ax.set_ylabel('Wind Speed (m/s)')
         ax.set_title(f'{name} - {model_name} ({task_name})')
         ax.legend(loc='upper right')
         ax.grid(True, alpha=0.3)
@@ -273,15 +317,15 @@ def plot_prediction_scatter(y_true, y_pred, model_name, task_name, target_names,
         # 理想线
         min_val = min(true_vals.min(), pred_vals.min())
         max_val = max(true_vals.max(), pred_vals.max())
-        ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='理想预测')
+        ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Ideal')
         
         # 计算R²
         from sklearn.metrics import r2_score
         r2 = r2_score(true_vals, pred_vals)
         
-        ax.set_xlabel('真实值 (m/s)')
-        ax.set_ylabel('预测值 (m/s)')
-        ax.set_title(f'{name}\nR² = {r2:.4f}')
+        ax.set_xlabel('Actual (m/s)')
+        ax.set_ylabel('Predicted (m/s)')
+        ax.set_title(f'{name}\nR2 = {r2:.4f}')
         ax.legend()
         ax.grid(True, alpha=0.3)
         ax.set_aspect('equal')
@@ -327,17 +371,17 @@ def plot_multistep_predictions(y_true, y_pred, model_name, task_name, target_idx
         true_vals = y_true[idx, :, target_idx]
         pred_vals = y_pred[idx, :, target_idx]
         
-        ax.plot(x, true_vals, 'b-o', label='真实值', linewidth=2, markersize=4)
-        ax.plot(x, pred_vals, 'r--s', label='预测值', linewidth=2, markersize=4)
+        ax.plot(x, true_vals, 'b-o', label='Actual', linewidth=2, markersize=4)
+        ax.plot(x, pred_vals, 'r--s', label='Predicted', linewidth=2, markersize=4)
         
-        ax.set_xlabel('预测步长')
-        ax.set_ylabel('风速 (m/s)')
-        ax.set_title(f'样本 {idx}')
+        ax.set_xlabel('Prediction Step')
+        ax.set_ylabel('Wind Speed (m/s)')
+        ax.set_title(f'Sample {idx}')
         ax.legend()
         ax.grid(True, alpha=0.3)
         ax.set_xticks(x)
     
-    plt.suptitle(f'{model_name} - {task_name} 多步预测', fontsize=14, y=1.02)
+    plt.suptitle(f'{model_name} - {task_name} Multi-step Prediction', fontsize=14, y=1.02)
     plt.tight_layout()
     
     if save_path:
@@ -383,9 +427,9 @@ def plot_model_comparison(results_df, metric='RMSE', save_path=None):
                        xytext=(0, 3), textcoords="offset points",
                        ha='center', va='bottom', fontsize=8)
     
-    ax.set_xlabel('任务')
+    ax.set_xlabel('Task')
     ax.set_ylabel(metric)
-    ax.set_title(f'模型性能对比 - {metric}')
+    ax.set_title(f'Model Performance Comparison - {metric}')
     ax.set_xticks(x + width * (len(models) - 1) / 2)
     ax.set_xticklabels(tasks)
     ax.legend(loc='upper right')
@@ -428,16 +472,16 @@ def plot_error_distribution(y_true, y_pred, model_name, task_name, target_names,
         mu, std = errors.mean(), errors.std()
         x = np.linspace(errors.min(), errors.max(), 100)
         from scipy import stats
-        ax.plot(x, stats.norm.pdf(x, mu, std), 'r-', linewidth=2, label=f'正态分布\nμ={mu:.3f}, σ={std:.3f}')
+        ax.plot(x, stats.norm.pdf(x, mu, std), 'r-', linewidth=2, label=f'Normal\nmu={mu:.3f}, sigma={std:.3f}')
         
         ax.axvline(x=0, color='green', linestyle='--', linewidth=2)
-        ax.set_xlabel('预测误差 (m/s)')
-        ax.set_ylabel('密度')
+        ax.set_xlabel('Prediction Error (m/s)')
+        ax.set_ylabel('Density')
         ax.set_title(f'{name}')
         ax.legend()
         ax.grid(True, alpha=0.3)
     
-    plt.suptitle(f'{model_name} - {task_name} 误差分布', fontsize=14, y=1.02)
+    plt.suptitle(f'{model_name} - {task_name} Error Distribution', fontsize=14, y=1.02)
     plt.tight_layout()
     
     if save_path:
@@ -460,12 +504,12 @@ def create_results_summary_table(results_dict, save_path=None):
     for model_name, tasks in results_dict.items():
         for task_name, metrics in tasks.items():
             rows.append({
-                '模型': model_name,
-                '任务': task_name,
+                'Model': model_name,
+                'Task': task_name,
                 'MSE': f"{metrics['MSE']:.4f}",
                 'RMSE': f"{metrics['RMSE']:.4f}",
                 'MAE': f"{metrics['MAE']:.4f}",
-                'R²': f"{metrics['R2']:.4f}"
+                'R2': f"{metrics['R2']:.4f}"
             })
     
     df = pd.DataFrame(rows)
@@ -493,7 +537,7 @@ def create_results_summary_table(results_dict, save_path=None):
             cell.set_text_props(color='white', fontweight='bold')
         cell.set_edgecolor('gray')
     
-    plt.title('模型性能汇总', fontsize=14, fontweight='bold', pad=20)
+    plt.title('Model Performance Summary', fontsize=14, fontweight='bold', pad=20)
     
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
@@ -520,7 +564,7 @@ if __name__ == "__main__":
     y_true = np.random.randn(num_samples, output_len, num_targets) * 5 + 10
     y_pred = y_true + np.random.randn(num_samples, output_len, num_targets) * 0.5
     
-    target_names = ['10m风速', '50m风速', '100m风速']
+    target_names = ['10m Wind', '50m Wind', '100m Wind']
     
     # 测试预测散点图
     print("测试预测散点图...")

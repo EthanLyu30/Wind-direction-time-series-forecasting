@@ -177,8 +177,9 @@ def evaluate(model, dataloader, criterion, device=DEVICE):
 
 
 def train_model(model, train_loader, val_loader, model_name, task_name,
-                num_epochs=NUM_EPOCHS, lr=LEARNING_RATE, device=DEVICE,
-                save_best=True, verbose=True):
+                num_epochs=NUM_EPOCHS, learning_rate=None, patience=None,
+                lr=None, device=DEVICE, save_best=True, verbose=True,
+                resume=False):
     """
     完整的模型训练流程
     
@@ -189,25 +190,95 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         model_name: 模型名称
         task_name: 任务名称 ('singlestep', 'multistep_1h', 'multistep_16h')
         num_epochs: 训练轮数
-        lr: 学习率
+        learning_rate: 学习率（新参数名）
+        patience: 早停耐心值
+        lr: 学习率（向后兼容）
         device: 设备
         save_best: 是否保存最佳模型
         verbose: 是否打印详细信息
+        resume: 是否从检查点继续训练
         
     Returns:
         训练历史字典
     """
+    # 处理学习率参数（优先使用learning_rate，然后是lr，最后是默认值）
+    actual_lr = learning_rate if learning_rate is not None else (lr if lr is not None else LEARNING_RATE)
+    # 处理早停耐心值
+    actual_patience = patience if patience is not None else EARLY_STOPPING_PATIENCE
+    
+    # 尝试从检查点恢复
+    start_epoch = 0
+    previous_history = None
+    model_path = os.path.join(MODELS_DIR, f"{model_name}_{task_name}.pth")
+    
+    if resume and os.path.exists(model_path):
+        try:
+            # PyTorch 2.6+ 需要设置 weights_only=False 来加载包含 numpy 数组的检查点
+            checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+            
+            # 检查模型结构是否兼容
+            checkpoint_state = checkpoint['model_state_dict']
+            current_state = model.state_dict()
+            
+            # 比较参数形状是否匹配
+            compatible = True
+            for key in current_state.keys():
+                if key in checkpoint_state:
+                    if current_state[key].shape != checkpoint_state[key].shape:
+                        compatible = False
+                        if verbose:
+                            print(f"⚠️ 模型结构已更改，参数 '{key}' 形状不匹配:")
+                            print(f"   检查点: {checkpoint_state[key].shape} → 当前模型: {current_state[key].shape}")
+                        break
+                else:
+                    compatible = False
+                    if verbose:
+                        print(f"⚠️ 模型结构已更改，缺少参数: '{key}'")
+                    break
+            
+            if compatible:
+                model.load_state_dict(checkpoint_state)
+                if 'history' in checkpoint:
+                    previous_history = checkpoint['history']
+                    # 从上次训练结束的epoch继续
+                    start_epoch = len(previous_history.get('train_loss', []))
+                if verbose:
+                    prev_best_loss = previous_history.get('best_val_loss', 'N/A') if previous_history else 'N/A'
+                    prev_best_epoch = previous_history.get('best_epoch', 'N/A') if previous_history else 'N/A'
+                    # 格式化最佳损失值
+                    loss_str = f"{prev_best_loss:.4f}" if isinstance(prev_best_loss, (int, float)) else str(prev_best_loss)
+                    print(f"✅ 从检查点恢复: {model_path}")
+                    print(f"   已完成 {start_epoch} 个epoch")
+                    print(f"   之前最佳验证损失: {loss_str} (epoch {prev_best_epoch})")
+            else:
+                if verbose:
+                    print(f"⚠️ 配置已更改，检查点不兼容，从头开始训练新模型")
+                start_epoch = 0
+                previous_history = None
+                
+        except Exception as e:
+            if verbose:
+                print(f"⚠️ 无法加载检查点，从头开始训练: {e}")
+            start_epoch = 0
+            previous_history = None
+    
     model = model.to(device)
     
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
-    # PyTorch 2.x 中 ReduceLROnPlateau 移除了 verbose 参数
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=5
+    optimizer = torch.optim.Adam(model.parameters(), lr=actual_lr, weight_decay=WEIGHT_DECAY)
+    
+    # 使用 CosineAnnealingWarmRestarts 学习率调度器（更适合长期训练）
+    # 结合 ReduceLROnPlateau 作为后备
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=10, T_mult=2, eta_min=actual_lr * 0.01
+    )
+    plateau_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', factor=0.5, patience=8
     )
     
-    early_stopping = EarlyStopping(patience=EARLY_STOPPING_PATIENCE, mode='min')
+    early_stopping = EarlyStopping(patience=actual_patience, mode='min')
     
+    # 初始化历史记录（如果是继续训练，合并之前的历史）
     history = {
         'train_loss': [],
         'val_loss': [],
@@ -217,19 +288,43 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         'training_time': 0
     }
     
+    if previous_history is not None:
+        history['train_loss'] = previous_history.get('train_loss', [])
+        history['val_loss'] = previous_history.get('val_loss', [])
+        history['val_metrics'] = previous_history.get('val_metrics', [])
+        history['best_epoch'] = previous_history.get('best_epoch', 0)
+        history['best_val_loss'] = previous_history.get('best_val_loss', float('inf'))  # 关键：保留历史最佳
+        history['training_time'] = previous_history.get('training_time', 0)
+        
+        # 重要：记录历史最佳损失，用于后续对比
+        history['_historical_best_val_loss'] = history['best_val_loss']
+    
     start_time = time.time()
+    
+    # 计算剩余需要训练的轮数
+    remaining_epochs = max(0, num_epochs - start_epoch)
     
     if verbose:
         print(f"\n{'='*60}")
         print(f"训练 {model_name} - {task_name}")
         print(f"{'='*60}")
         print(f"设备: {device}")
-        print(f"学习率: {lr}")
-        print(f"训练轮数: {num_epochs}")
+        print(f"学习率: {actual_lr}")
+        if start_epoch > 0:
+            print(f"继续训练: 从 epoch {start_epoch + 1} 到 {num_epochs}")
+        else:
+            print(f"训练轮数: {num_epochs}")
+        print(f"早停耐心值: {actual_patience}")
     
-    progress_bar = tqdm(range(num_epochs), desc=f"Training {model_name}")
+    if remaining_epochs == 0:
+        if verbose:
+            print("✅ 模型已完成指定轮数的训练，无需继续")
+        return history
     
-    for epoch in progress_bar:
+    progress_bar = tqdm(range(remaining_epochs), desc=f"Training {model_name}")
+    
+    for epoch_idx in progress_bar:
+        actual_epoch = start_epoch + epoch_idx
         # 训练
         train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
         
@@ -244,50 +339,136 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         history['val_loss'].append(val_loss)
         history['val_metrics'].append(val_metrics)
         
-        # 更新学习率
-        scheduler.step(val_loss)
+        # 更新学习率（使用余弦退火 + 平台检测双调度器）
+        scheduler.step(actual_epoch)
+        plateau_scheduler.step(val_loss)
+        
+        # 获取当前学习率
+        current_lr = optimizer.param_groups[0]['lr']
+        
+        # 警告：学习率过低导致训练停滞
+        if current_lr < 1e-6 and actual_epoch > 20:
+            if verbose and actual_epoch % 20 == 0:
+                print(f"⚠️  警告：学习率过低 ({current_lr:.2e})，可能导致训练停滞，建议增加学习率")
         
         # 更新进度条
         progress_bar.set_postfix({
             'train_loss': f'{train_loss:.4f}',
             'val_loss': f'{val_loss:.4f}',
-            'val_rmse': f'{val_metrics["RMSE"]:.4f}'
+            'val_rmse': f'{val_metrics["RMSE"]:.4f}',
+            'lr': f'{current_lr:.6f}'
         })
         
         # 检查是否为最佳模型
         if val_loss < history['best_val_loss']:
             history['best_val_loss'] = val_loss
-            history['best_epoch'] = epoch + 1
+            history['best_epoch'] = actual_epoch + 1
         
         # 早停检查
         early_stopping(val_loss, model)
         if early_stopping.early_stop:
             if verbose:
-                print(f"\n早停触发于 epoch {epoch + 1}")
+                print(f"\n早停触发于 epoch {actual_epoch + 1}")
             break
     
-    # 加载最佳模型
+    # 加载本次训练的最佳模型（用于后续对比）
     early_stopping.load_best_model(model)
+    current_best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
     
     history['training_time'] = time.time() - start_time
     
-    # 保存模型
+    # ==================== 关键修复：对比新旧最佳模型，保留历史最佳 ====================
+    model_filename = f"{model_name}_{task_name}.pth"
+    model_path = os.path.join(MODELS_DIR, model_filename)
+    
+    # 合并完整训练历史（无论是否改进都要合并）
+    merged_history = history.copy()
+    if previous_history is not None:
+        # 合并历史记录
+        merged_history['train_loss'] = previous_history.get('train_loss', []) + history['train_loss']
+        merged_history['val_loss'] = previous_history.get('val_loss', []) + history['val_loss']
+        merged_history['val_metrics'] = previous_history.get('val_metrics', []) + history['val_metrics']
+        merged_history['training_time'] = previous_history.get('training_time', 0) + history['training_time']
+        
+        # 对比历史最佳和本次最佳，选择最优的
+        prev_best_loss = previous_history.get('best_val_loss', float('inf'))
+        current_best_loss = history['best_val_loss']
+        
+        if current_best_loss < prev_best_loss:
+            # 本次训练产生了更好的模型
+            best_val_loss = current_best_loss
+            best_epoch = start_epoch + history['best_epoch']  # 调整epoch编号
+            best_model_state = current_best_model_state
+            history_improved = True
+        else:
+            # 历史模型更好，保留历史最佳
+            best_val_loss = prev_best_loss
+            best_epoch = previous_history.get('best_epoch', 0)
+            # 需要从旧检查点加载历史最佳模型权重
+            if os.path.exists(model_path):
+                old_checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+                best_model_state = old_checkpoint['model_state_dict']
+            else:
+                best_model_state = current_best_model_state
+            history_improved = False
+    else:
+        # 首次训练
+        best_val_loss = history['best_val_loss']
+        best_epoch = history['best_epoch']
+        best_model_state = current_best_model_state
+        history_improved = True
+    
+    # 更新合并后的历史记录中的最佳信息
+    merged_history['best_val_loss'] = best_val_loss
+    merged_history['best_epoch'] = best_epoch
+    
+    # 打印对比信息
+    if verbose:
+        print(f"\n{'='*60}")
+        print(f"训练历史合并分析：")
+        if previous_history is not None:
+            prev_best_loss = previous_history.get('best_val_loss', float('inf'))
+            current_best_loss = history['best_val_loss']
+            print(f"  历史最佳验证损失: {prev_best_loss:.4f} (epoch {previous_history.get('best_epoch', '?')})")
+            print(f"  本次最佳验证损失: {current_best_loss:.4f} (epoch {start_epoch + history['best_epoch']})")
+            
+            improvement = prev_best_loss - current_best_loss
+            improvement_pct = (improvement / prev_best_loss) * 100 if prev_best_loss > 0 else 0
+            
+            if history_improved:
+                print(f"  ✅ 本次训练改进: {improvement:.4f} ({improvement_pct:.2f}%)")
+            else:
+                print(f"  ⚠️  本次训练未改进，保留历史最佳模型")
+        print(f"  最终保留最佳验证损失: {best_val_loss:.4f} (epoch {best_epoch})")
+        print(f"  累计训练轮数: {len(merged_history['train_loss'])}")
+        print(f"{'='*60}\n")
+    
+    # 保存模型（始终保存历史最佳权重 + 完整训练历史）
     if save_best:
-        model_filename = f"{model_name}_{task_name}.pth"
-        model_path = os.path.join(MODELS_DIR, model_filename)
         torch.save({
-            'model_state_dict': model.state_dict(),
+            'model_state_dict': best_model_state,  # 历史最佳权重
             'model_name': model_name,
             'task_name': task_name,
-            'history': history,
+            'history': merged_history,  # 完整训练历史（包含所有微调过程）
+            'total_epochs': len(merged_history['train_loss']),
         }, model_path)
         if verbose:
-            print(f"\n模型已保存至: {model_path}")
+            if history_improved:
+                print(f"✅ 已保存改进后的模型至: {model_path}")
+            else:
+                print(f"✅ 已更新训练历史，保留历史最佳模型: {model_path}")
+    
+    # 返回合并后的完整历史
+    return merged_history
     
     if verbose:
+        total_epochs = len(history['train_loss'])
         print(f"\n训练完成!")
+        print(f"总训练轮数: {total_epochs}")
         print(f"最佳验证损失: {history['best_val_loss']:.4f} (epoch {history['best_epoch']})")
-        print(f"训练时间: {history['training_time']:.2f}秒")
+        print(f"本次训练时间: {time.time() - start_time:.2f}秒")
+        if previous_history:
+            print(f"累计训练时间: {history['training_time']:.2f}秒")
     
     return history
 
@@ -363,6 +544,7 @@ def load_model(model, model_path):
     Returns:
         加载了权重的模型, 训练历史
     """
+    # PyTorch 2.6+ 需要设置 weights_only=False
     checkpoint = torch.load(model_path, map_location=DEVICE, weights_only=False)
     model.load_state_dict(checkpoint['model_state_dict'])
     history = checkpoint.get('history', {})
