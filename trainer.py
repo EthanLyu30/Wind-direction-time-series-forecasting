@@ -18,28 +18,52 @@ from config import (
     DEVICE, LEARNING_RATE, NUM_EPOCHS, EARLY_STOPPING_PATIENCE,
     WEIGHT_DECAY, MODELS_DIR, LOGS_DIR
 )
+from datetime import datetime
+import json
 
 
 class EarlyStopping:
-    """早停机制 - 使用R²作为选择标准"""
+    """
+    早停机制 - 支持多种评估指标策略
+    
+    评估指标选择建议：
+    - R²（mode='r2'）: 适合长期预测，更好地反映模型对数据的解释能力
+    - MSE（mode='mse'）: 适合短期预测，直接最小化预测误差
+    - 综合指标（mode='combined'）: 同时考虑R²和MSE，推荐用于模型微调
+    """
 
-    def __init__(self, patience=EARLY_STOPPING_PATIENCE, min_delta=0.001, mode='max'):
+    def __init__(self, patience=EARLY_STOPPING_PATIENCE, min_delta=0.001, mode='r2'):
         """
         初始化早停
 
         Args:
             patience: 容忍的epoch数
-            min_delta: 最小改进量 (对于R²，0.001是合理的改进阈值)
-            mode: 'max'表示R²越大越好
+            min_delta: 最小改进量
+            mode: 评估模式
+                  'r2': 使用R²作为指标（越大越好）
+                  'mse': 使用MSE作为指标（越小越好）
+                  'combined': 综合考虑R²和MSE
         """
         self.patience = patience
         self.min_delta = min_delta
-        self.mode = mode  # 固定为'max'，因为R²越大越好
+        self.mode = mode
         self.counter = 0
         self.best_score = None
         self.early_stop = False
         self.best_model_state = None
-        self.best_metrics = None  # 保存最佳的完整指标
+        self.best_metrics = None
+
+    def _get_score(self, metrics):
+        """根据模式获取评估分数"""
+        if self.mode == 'mse':
+            # MSE越小越好，取负值使得越大越好
+            return -metrics['MSE']
+        elif self.mode == 'combined':
+            # 综合指标：R² - 0.1 * normalized_MSE
+            # 这样既考虑R²又惩罚过大的MSE
+            return metrics['R2'] - 0.1 * min(metrics['MSE'], 1.0)
+        else:  # 默认 'r2'
+            return metrics['R2']
 
     def __call__(self, metrics, model):
         """
@@ -49,27 +73,24 @@ class EarlyStopping:
             metrics: 包含R2、MSE、RMSE、MAE的字典
             model: 当前模型
         """
-        current_score = metrics['R2']  # 使用R²作为主要指标
+        current_score = self._get_score(metrics)
 
         if self.best_score is None:
-            # 第一次调用
             self.best_score = current_score
             self.best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
             self.best_metrics = metrics.copy()
         elif self._is_improvement(current_score):
-            # 有改进
             self.best_score = current_score
             self.best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
             self.best_metrics = metrics.copy()
             self.counter = 0
         else:
-            # 没有改进
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
 
     def _is_improvement(self, score):
-        """检查是否有足够改进"""
+        """检查是否有足够改进（分数越大越好）"""
         return score > self.best_score + self.min_delta
 
     def load_best_model(self, model):
@@ -80,6 +101,12 @@ class EarlyStopping:
     def get_best_metrics(self):
         """获取最佳模型的指标"""
         return self.best_metrics
+    
+    def get_best_r2(self):
+        """获取最佳R²值（用于模型对比）"""
+        if self.best_metrics:
+            return self.best_metrics['R2']
+        return None
 
 
 def calculate_metrics(y_true, y_pred):
@@ -196,7 +223,7 @@ def evaluate(model, dataloader, criterion, device=DEVICE):
 def train_model(model, train_loader, val_loader, model_name, task_name,
                 num_epochs=NUM_EPOCHS, learning_rate=None, patience=None,
                 lr=None, device=DEVICE, save_best=True, verbose=True,
-                resume=False):
+                resume=False, metric_mode=None):
     """
     完整的模型训练流程
     
@@ -214,6 +241,10 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         save_best: 是否保存最佳模型
         verbose: 是否打印详细信息
         resume: 是否从检查点继续训练
+        metric_mode: 评估指标模式 ('r2', 'mse', 'combined')
+                    如果为None，根据任务类型自动选择：
+                    - multistep_16h: 'r2' (长期预测用R²)
+                    - 其他: 'mse' (短期预测用MSE)
         
     Returns:
         训练历史字典
@@ -222,6 +253,13 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     actual_lr = learning_rate if learning_rate is not None else (lr if lr is not None else LEARNING_RATE)
     # 处理早停耐心值
     actual_patience = patience if patience is not None else EARLY_STOPPING_PATIENCE
+    
+    # 根据任务类型自动选择评估指标模式
+    if metric_mode is None:
+        if task_name == 'multistep_16h':
+            metric_mode = 'r2'  # 长期预测：使用R²
+        else:
+            metric_mode = 'mse'  # 短期预测：使用MSE
     
     # 尝试从检查点恢复
     start_epoch = 0
@@ -293,7 +331,7 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         optimizer, mode='min', factor=0.5, patience=8
     )
     
-    early_stopping = EarlyStopping(patience=actual_patience, mode='max')
+    early_stopping = EarlyStopping(patience=actual_patience, mode=metric_mode)
     
     # 初始化历史记录（如果是继续训练，合并之前的历史）
     history = {
@@ -322,11 +360,13 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     remaining_epochs = max(0, num_epochs - start_epoch)
     
     if verbose:
+        mode_desc = {'r2': 'R²(越大越好)', 'mse': 'MSE(越小越好)', 'combined': '综合指标'}
         print(f"\n{'='*60}")
         print(f"训练 {model_name} - {task_name}")
         print(f"{'='*60}")
         print(f"设备: {device}")
         print(f"学习率: {actual_lr}")
+        print(f"评估模式: {mode_desc.get(metric_mode, metric_mode)}")
         if start_epoch > 0:
             print(f"继续训练: 从 epoch {start_epoch + 1} 到 {num_epochs}")
         else:
@@ -376,15 +416,16 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
             'lr': f'{current_lr:.6f}'
         })
         
-        # 检查是否为最佳模型（现在由EarlyStopping类内部处理）
-        # 早停检查 - 传入完整指标，使用R²作为选择标准
+        # 检查是否为最佳模型（由EarlyStopping类内部处理）
         early_stopping(val_metrics, model)
 
         # 更新历史记录中的最佳信息
-        if early_stopping.best_score is not None:
-            history['best_val_loss'] = val_loss  # 仍然记录loss用于显示
+        if early_stopping.best_metrics is not None:
+            history['best_val_loss'] = early_stopping.best_metrics['MSE']
             history['best_epoch'] = actual_epoch + 1
-            history['best_r2'] = early_stopping.best_score  # 新增：记录最佳R²
+            history['best_r2'] = early_stopping.best_metrics['R2']
+            history['best_score'] = early_stopping.best_score  # 保存用于对比的分数
+            history['metric_mode'] = metric_mode  # 保存使用的评估模式
         if early_stopping.early_stop:
             if verbose:
                 print(f"\n早停触发于 epoch {actual_epoch + 1}")
@@ -409,20 +450,30 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         merged_history['val_metrics'] = previous_history.get('val_metrics', []) + history['val_metrics']
         merged_history['training_time'] = previous_history.get('training_time', 0) + history['training_time']
         
-        # 对比历史最佳和本次最佳，选择最优的（基于R²）
-        prev_best_r2 = previous_history.get('best_r2', float('-inf'))
-        current_best_r2 = history.get('best_r2', early_stopping.best_score)
+        # 对比历史最佳和本次最佳，根据metric_mode选择对比方式
+        prev_best_score = previous_history.get('best_score', None)
+        current_best_score = history.get('best_score', early_stopping.best_score)
+        
+        # 如果历史没有best_score（旧版本模型），使用R²作为回退
+        if prev_best_score is None:
+            prev_best_score = previous_history.get('best_r2', float('-inf'))
+            # 如果metric_mode是mse，需要取负值
+            if metric_mode == 'mse':
+                prev_best_mse = previous_history.get('best_val_loss', float('inf'))
+                prev_best_score = -prev_best_mse
 
-        if current_best_r2 > prev_best_r2:
+        if current_best_score > prev_best_score:
             # 本次训练产生了更好的模型
             best_val_loss = history['best_val_loss']
             best_epoch = start_epoch + history['best_epoch']  # 调整epoch编号
             best_model_state = current_best_model_state
+            best_r2 = history.get('best_r2', early_stopping.get_best_r2())
             history_improved = True
         else:
             # 历史模型更好，保留历史最佳
             best_val_loss = previous_history.get('best_val_loss', history['best_val_loss'])
             best_epoch = previous_history.get('best_epoch', 0)
+            best_r2 = previous_history.get('best_r2', 0)
             # 需要从旧检查点加载历史最佳模型权重
             if os.path.exists(model_path):
                 old_checkpoint = torch.load(model_path, map_location=device, weights_only=False)
@@ -435,33 +486,42 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         best_val_loss = history['best_val_loss']
         best_epoch = history['best_epoch']
         best_model_state = current_best_model_state
+        best_r2 = history.get('best_r2', early_stopping.get_best_r2())
         history_improved = True
     
     # 更新合并后的历史记录中的最佳信息
     merged_history['best_val_loss'] = best_val_loss
     merged_history['best_epoch'] = best_epoch
+    merged_history['best_r2'] = best_r2
+    merged_history['best_score'] = current_best_score if history_improved else prev_best_score
+    merged_history['metric_mode'] = metric_mode
     
     # 打印对比信息
     if verbose:
+        mode_desc = {'r2': 'R²(越大越好)', 'mse': 'MSE(越小越好)', 'combined': '综合指标'}
         print(f"\n{'='*60}")
-        print(f"训练历史合并分析：")
+        print(f"训练历史合并分析（评估模式: {mode_desc.get(metric_mode, metric_mode)}）：")
         if previous_history is not None:
             prev_best_r2 = previous_history.get('best_r2', float('-inf'))
-            current_best_r2 = history.get('best_r2', early_stopping.best_score)
+            current_best_r2 = history.get('best_r2', early_stopping.get_best_r2())
             prev_best_loss = previous_history.get('best_val_loss', float('inf'))
             current_best_loss = history['best_val_loss']
 
-            print(f"  历史最佳R²: {prev_best_r2:.4f} (损失: {prev_best_loss:.4f}, epoch {previous_history.get('best_epoch', '?')})")
-            print(f"  本次最佳R²: {current_best_r2:.4f} (损失: {current_best_loss:.4f}, epoch {start_epoch + history['best_epoch']})")
-
-            improvement = current_best_r2 - prev_best_r2
-            improvement_pct = abs(improvement / prev_best_r2) * 100 if prev_best_r2 != 0 else 0
+            print(f"  历史最佳: R²={prev_best_r2:.4f}, MSE={prev_best_loss:.4f} (epoch {previous_history.get('best_epoch', '?')})")
+            print(f"  本次最佳: R²={current_best_r2:.4f}, MSE={current_best_loss:.4f} (epoch {start_epoch + history['best_epoch']})")
 
             if history_improved:
-                print(f"  ✅ 本次训练改进: +{improvement:.4f} ({improvement_pct:.2f}%)")
+                if metric_mode == 'mse':
+                    improvement = prev_best_loss - current_best_loss
+                    print(f"  ✅ 本次训练改进: MSE减少 {improvement:.4f}")
+                else:
+                    improvement = current_best_r2 - prev_best_r2
+                    print(f"  ✅ 本次训练改进: R²提升 {improvement:.4f}")
             else:
                 print(f"  ⚠️  本次训练未改进，保留历史最佳模型")
-        print(f"  最终保留最佳R²: {early_stopping.best_score:.4f} (损失: {best_val_loss:.4f}, epoch {best_epoch})")
+        
+        final_r2 = best_r2 if best_r2 else early_stopping.get_best_r2()
+        print(f"  最终保留: R²={final_r2:.4f}, MSE={best_val_loss:.4f} (epoch {best_epoch})")
         print(f"  累计训练轮数: {len(merged_history['train_loss'])}")
         print(f"{'='*60}\n")
     
@@ -479,21 +539,52 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
                 print(f"✅ 已保存改进后的模型至: {model_path}")
             else:
                 print(f"✅ 已更新训练历史，保留历史最佳模型: {model_path}")
+        
+        # 保存训练日志（追加模式，保留所有微调历史）
+        _save_training_log(model_name, task_name, merged_history, metric_mode, 
+                          actual_lr, actual_patience, history_improved, start_epoch)
     
     # 返回合并后的完整历史
     return merged_history
+
+
+def _save_training_log(model_name, task_name, history, metric_mode, lr, patience, improved, start_epoch):
+    """
+    保存训练日志到logs目录（追加模式，保留所有训练/微调记录）
     
-    if verbose:
-        total_epochs = len(merged_history['train_loss'])
-        print(f"\n训练完成!")
-        print(f"总训练轮数: {total_epochs}")
-        print(f"最佳R²: {early_stopping.best_score:.4f} (验证损失: {merged_history.get('best_val_loss', history['best_val_loss']):.4f})")
-        print(f"最佳模型所在epoch: {merged_history.get('best_epoch', history['best_epoch'])}")
-        print(f"本次训练时间: {time.time() - start_time:.2f}秒")
-        if previous_history:
-            print(f"累计训练时间: {merged_history['training_time']:.2f}秒")
+    Args:
+        model_name: 模型名称
+        task_name: 任务名称
+        history: 训练历史
+        metric_mode: 评估模式
+        lr: 学习率
+        patience: 早停耐心值
+        improved: 是否有改进
+        start_epoch: 开始训练的epoch
+    """
+    log_file = os.path.join(LOGS_DIR, f'{model_name}_{task_name}_training_log.jsonl')
     
-    return history
+    log_entry = {
+        'timestamp': datetime.now().isoformat(),
+        'model_name': model_name,
+        'task_name': task_name,
+        'metric_mode': metric_mode,
+        'learning_rate': lr,
+        'patience': patience,
+        'start_epoch': start_epoch,
+        'end_epoch': len(history.get('train_loss', [])),
+        'best_epoch': history.get('best_epoch', 0),
+        'best_r2': history.get('best_r2', None),
+        'best_mse': history.get('best_val_loss', None),
+        'total_training_time': history.get('training_time', 0),
+        'improved': improved,
+    }
+    
+    # 追加到日志文件（JSONL格式，每行一个JSON对象）
+    with open(log_file, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
+    
+    print(f"📝 训练日志已追加至: {log_file}")
 
 
 def test_model(model, test_loader, scaler_targets, device=DEVICE):
