@@ -1,13 +1,13 @@
 # Wind Speed Prediction Experiment Report
 
-Generated: 2025-12-29 15:34:08
+Generated: 2025-12-29 16:42:30
 
 ## 1. Experiment Configuration
 
 - Device: cuda
-- Batch Size: 256
-- Max Epochs: 800
-- Learning Rate: 5e-05
+- Batch Size: 512
+- Max Epochs: 1500
+- Learning Rate: 0.0001
 - Random Seed: 42
 
 ## 2. Task Configuration
@@ -26,13 +26,15 @@ Generated: 2025-12-29 15:34:08
 |:------------|:--------------|---------:|---------:|---------:|---------:|
 | CNN_LSTM    | singlestep    | 0.904447 | 0.951024 | 0.722667 | 0.877995 |
 | LSTM        | singlestep    | 0.854254 | 0.924259 | 0.694755 | 0.884766 |
+| LSTNet      | singlestep    | 0.898757 | 0.948028 | 0.722531 | 0.878762 |
 | Linear      | singlestep    | 0.858833 | 0.926732 | 0.706027 | 0.884148 |
 | NBEATS      | singlestep    | 1.16628  | 1.07995  | 0.833252 | 0.842675 |
 | TCN         | singlestep    | 0.874418 | 0.935103 | 0.702591 | 0.882046 |
 | Transformer | singlestep    | 0.891391 | 0.944135 | 0.707706 | 0.879756 |
-| WaveNet     | singlestep    | 0.908054 | 0.952919 | 0.722012 | 0.877508 |
+| WaveNet     | singlestep    | 0.908046 | 0.952915 | 0.722007 | 0.877509 |
 | CNN_LSTM    | multistep_16h | 4.10591  | 2.02631  | 1.60491  | 0.448412 |
 | LSTM        | multistep_16h | 3.70354  | 1.92446  | 1.52456  | 0.502466 |
+| LSTNet      | multistep_16h | 4.44139  | 2.10746  | 1.6274   | 0.403345 |
 | Linear      | multistep_16h | 3.60898  | 1.89973  | 1.51013  | 0.51517  |
 | NBEATS      | multistep_16h | 4.78301  | 2.18701  | 1.70261  | 0.357451 |
 | TCN         | multistep_16h | 4.2551   | 2.06279  | 1.63876  | 0.428371 |
@@ -65,6 +67,12 @@ Generated: 2025-12-29 15:34:08
 - Gated activation units enhance expressive power
 - Dilated causal convolution efficiently models long sequences
 - Residual and Skip connections accelerate gradient flow
+
+### 5.5 LSTNet Model
+- CNN layer extracts short-term local patterns
+- GRU layer captures long-term dependencies
+- Skip-RNN models periodic patterns directly
+- Highway component (autoregressive) enhances prediction stability
 
 ## 6. Conclusion
 
