@@ -77,9 +77,8 @@ SINGLE_STEP_OUTPUT_LEN = 1  # 输出序列长度（1小时）
 MULTI_STEP_1_INPUT_LEN = 8
 MULTI_STEP_1_OUTPUT_LEN = 1
 
-# 多步预测配置 - 任务2：24小时预测16小时（增加输入信息量）
-# 原来8小时输入太短，改为24小时可以捕获更完整的日周期模式
-MULTI_STEP_2_INPUT_LEN = 24   # 增加到24小时以捕获日周期
+# 多步预测配置 - 任务2：8小时预测16小时（符合作业要求）
+MULTI_STEP_2_INPUT_LEN = 8   # 作业要求：8小时
 MULTI_STEP_2_OUTPUT_LEN = 16
 
 # ==================== 数据集划分配置 ====================
