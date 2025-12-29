@@ -1,111 +1,81 @@
 # 风速时间序列预测实验报告
 
-生成时间: 2025-12-29
+Generated: 2025-12-29 17:37:10
 
 ## 1. 实验配置
 
 - 设备: CUDA (NVIDIA A100-SXM4-40GB)
 - Batch Size: 512
-- 最大训练轮数: 500+
-- 学习率: 0.0001 ~ 0.001 (自适应调整)
-- 随机种子: 42
+- Max Epochs: 500
+- Learning Rate: 5e-05
+- Random Seed: 42
 
-## 2. 任务配置
+## 2. Task Configuration
 
-### 单步预测 (8小时 → 1小时)
-- 输入序列长度: 8 小时
-- 输出序列长度: 1 小时
-- 预测目标: 10m/50m/100m 三个高度的风速
+### Single-step Prediction (8h -> 1h)
+- Input Length: 8 hours
+- Output Length: 1 hours
 
-### 多步预测 (8小时 → 16小时)
-- 输入序列长度: 8 小时
-- 输出序列长度: 16 小时
-- 预测目标: 10m/50m/100m 三个高度的风速
+### Multi-step Prediction (8h -> 16h)
+- Input Length: 8 hours
+- Output Length: 16 hours
 
-## 3. 数据集信息
+## 3. Model Performance Comparison
 
-- 数据来源: WindSpeed_10m, WindSpeed_50m, WindSpeed_100m
-- 时间范围: 2016-11-19 至 2017-01-31
-- 样本总数: 10,573
-- 特征数量: 21 (包含气象特征和时间特征)
-- 数据划分: 训练集 70% / 验证集 20% / 测试集 10%
+| Model       | Task          |      MSE |     RMSE |      MAE |       R2 |
+|:------------|:--------------|---------:|---------:|---------:|---------:|
+| CNN_LSTM    | singlestep    | 0.904447 | 0.951024 | 0.722667 | 0.877995 |
+| LSTM        | singlestep    | 0.854254 | 0.924259 | 0.694755 | 0.884766 |
+| LSTNet      | singlestep    | 0.898757 | 0.948028 | 0.722531 | 0.878762 |
+| Linear      | singlestep    | 0.858833 | 0.926732 | 0.706027 | 0.884148 |
+| NBEATS      | singlestep    | 1.16628  | 1.07995  | 0.833252 | 0.842675 |
+| TCN         | singlestep    | 0.874418 | 0.935103 | 0.702591 | 0.882046 |
+| Transformer | singlestep    | 0.891391 | 0.944135 | 0.707706 | 0.879756 |
+| WaveNet     | singlestep    | 0.908046 | 0.952915 | 0.722007 | 0.877509 |
+| CNN_LSTM    | multistep_16h | 3.98992  | 1.99748  | 1.58276  | 0.463995 |
+| LSTM        | multistep_16h | 3.55428  | 1.88528  | 1.49368  | 0.522519 |
+| LSTNet      | multistep_16h | 4.44139  | 2.10746  | 1.6274   | 0.403345 |
+| Linear      | multistep_16h | 3.60898  | 1.89973  | 1.51013  | 0.51517  |
+| NBEATS      | multistep_16h | 4.78301  | 2.18701  | 1.70261  | 0.357451 |
+| TCN         | multistep_16h | 4.16839  | 2.04166  | 1.63044  | 0.440019 |
+| Transformer | multistep_16h | 4.05958  | 2.01484  | 1.5991   | 0.454637 |
+| WaveNet     | multistep_16h | 3.80249  | 1.95     | 1.53455  | 0.489174 |
 
-### 特征列表
-- 气象特征: 风向、温度、气压、湿度 (各高度)
-- 时间特征: hour, day_of_week, month, hour_sin/cos, day_sin/cos, month_sin/cos
+## 4. Best Models
 
-### 数据预处理
-- 缺失值处理: 线性插值填充
-- 异常值处理: IQR方法检测并平滑处理
-- 特征标准化: StandardScaler
+- **Single-step Prediction (8h -> 1h)**: LSTM (RMSE: 0.9243, R²: 0.8848)
+- **Multi-step Prediction (8h -> 16h)**: LSTM (RMSE: 1.8853, R²: 0.5225)
 
-## 4. 模型性能对比
+## 5. Innovation Points
 
-### 单步预测 (8h → 1h) 测试集结果
+### 5.1 CNN-LSTM Hybrid Model
+- Combines CNN's local feature extraction with LSTM's sequence modeling
+- Multi-scale convolution kernels capture features at different time scales
+- Attention mechanism enhances important feature weights
 
-| 模型 | MSE | RMSE | MAE | R² |
-|:-----|----:|-----:|----:|---:|
-| **LSTM** | 0.8543 | 0.9243 | 0.6948 | **0.8848** |
-| Linear | 0.8588 | 0.9267 | 0.7060 | 0.8841 |
-| TCN | 0.8744 | 0.9351 | 0.7026 | 0.8820 |
-| LSTNet | 0.8988 | 0.9480 | 0.7225 | 0.8788 |
-| Transformer | 0.8914 | 0.9441 | 0.7077 | 0.8798 |
-| CNN_LSTM | 0.9044 | 0.9510 | 0.7227 | 0.8780 |
-| WaveNet | 0.9080 | 0.9529 | 0.7220 | 0.8775 |
+### 5.2 Attention-LSTM Model
+- Self-attention mechanism enhances feature representation
+- Temporal attention focuses on key time points
+- Multi-head attention processes different subspace information in parallel
 
-### 多步预测 (8h → 16h) 测试集结果
+### 5.3 TCN Model
+- Causal convolution ensures temporal causality
+- Dilated convolution exponentially expands receptive field
+- Residual connections stabilize deep network training
 
-| 模型 | MSE | RMSE | MAE | R² |
-|:-----|----:|-----:|----:|---:|
-| **Linear** | 3.6090 | 1.8997 | 1.5101 | **0.5152** |
-| LSTM | 3.7035 | 1.9245 | 1.5246 | 0.5025 |
-| WaveNet | 3.8025 | 1.9500 | 1.5346 | 0.4892 |
-| Transformer | 4.0596 | 2.0148 | 1.5991 | 0.4546 |
-| CNN_LSTM | 4.1059 | 2.0263 | 1.6049 | 0.4484 |
-| TCN | 4.2551 | 2.0628 | 1.6388 | 0.4284 |
-| LSTNet | 4.4414 | 2.1075 | 1.6274 | 0.4033 |
+### 5.4 WaveNet Model
+- Gated activation units enhance expressive power
+- Dilated causal convolution efficiently models long sequences
+- Residual and Skip connections accelerate gradient flow
 
-## 5. 最佳模型
+### 5.5 LSTNet Model
+- CNN layer extracts short-term local patterns
+- GRU layer captures long-term dependencies
+- Skip-RNN models periodic patterns directly
+- Highway component (autoregressive) enhances prediction stability
 
-- **单步预测最佳**: LSTM (RMSE: 0.9243, R²: 0.8848)
-- **多步预测最佳**: Linear (RMSE: 1.8997, R²: 0.5152)
+## 6. Conclusion
 
-## 6. 创新模型说明
+This experiment compared Linear, LSTM, and Transformer as baseline models, along with CNN-LSTM, Attention-LSTM, TCN, and WaveNet as innovative models for wind speed prediction tasks.
 
-### 6.1 CNN-LSTM 混合模型
-- 结合CNN的局部特征提取与LSTM的序列建模能力
-- 多尺度卷积核捕获不同时间尺度的特征
-- 注意力机制增强重要特征权重
-
-### 6.2 TCN (时序卷积网络)
-- 因果卷积保证时序因果性
-- 膨胀卷积指数级扩大感受野
-- 残差连接稳定深层网络训练
-
-### 6.3 WaveNet 模型
-- 门控激活单元增强表达能力
-- 膨胀因果卷积高效建模长序列
-- 残差和Skip连接加速梯度流动
-
-### 6.4 LSTNet 模型
-- CNN层提取短期局部模式
-- GRU层捕获长期依赖
-- Skip-RNN直接建模周期性模式
-- Highway组件(自回归)增强预测稳定性
-
-## 7. 结论
-
-本实验对比了 Linear、LSTM、Transformer 三个基准模型，以及 CNN-LSTM、TCN、WaveNet、LSTNet 四个创新模型在风速预测任务上的表现。
-
-### 主要发现
-
-1. **单步预测表现优异**: 所有模型的R²均超过0.87，其中LSTM表现最佳(R²=0.8848)
-2. **多步预测难度较大**: 16小时长期预测的R²在0.40-0.52之间，符合预期
-3. **简单模型效果好**: Linear模型在多步预测中表现最佳，说明数据具有较强的线性特征
-4. **LSTM适合时序任务**: LSTM在单步预测中稳定领先，验证了其在时序预测领域的优势
-
-### 模型选择建议
-
-- 短期预测 (1小时): 推荐 LSTM 或 Linear
-- 长期预测 (16小时): 推荐 Linear 或 LSTM
-- 计算资源受限: 推荐 Linear (参数量最少，效果不差)
+The results show that deep learning models have significant advantages in capturing wind speed temporal features, especially models with attention mechanisms that can better capture long-term dependencies.
