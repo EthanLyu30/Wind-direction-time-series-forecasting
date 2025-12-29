@@ -665,6 +665,156 @@ class NBEATSModel(nn.Module):
         return output
 
 
+# ==================== LSTNet 模型 ====================
+
+class LSTNetModel(nn.Module):
+    """
+    LSTNet (Long- and Short-term Time-series Network)
+    
+    创新点：
+    1. CNN层提取短期局部模式
+    2. GRU层捕获长期依赖
+    3. Skip-GRU层直接建模周期性模式
+    4. 自回归组件增强预测稳定性
+    5. 参数量适中，适合中小规模数据集
+    
+    参考论文：
+    Lai et al. "Modeling Long- and Short-Term Temporal Patterns with Deep Neural Networks" (SIGIR 2018)
+    """
+    
+    def __init__(self, input_len, output_len, num_features, num_targets, config=None):
+        """
+        Args:
+            input_len: 输入序列长度
+            output_len: 输出序列长度
+            num_features: 输入特征数量
+            num_targets: 预测目标数量
+            config: 模型配置字典
+        """
+        super(LSTNetModel, self).__init__()
+        
+        # 延迟导入避免循环依赖
+        if config is None:
+            from config import LSTNET_CONFIG
+            config = LSTNET_CONFIG
+        
+        self.input_len = input_len
+        self.output_len = output_len
+        self.num_features = num_features
+        self.num_targets = num_targets
+        
+        # 配置参数
+        self.cnn_channels = config.get('cnn_channels', 32)
+        self.cnn_kernel = config.get('cnn_kernel', 3)
+        self.rnn_hidden = config.get('rnn_hidden', 64)
+        self.skip_hidden = config.get('skip_hidden', 32)
+        self.skip = config.get('skip', 4)  # 跳跃步长（周期）
+        self.highway_window = config.get('highway_window', 4)  # 自回归窗口
+        self.dropout = config.get('dropout', 0.2)
+        
+        # 1. CNN层 - 提取短期局部模式
+        self.conv = nn.Sequential(
+            nn.Conv1d(num_features, self.cnn_channels, self.cnn_kernel, padding=self.cnn_kernel//2),
+            nn.ReLU(),
+            nn.Dropout(self.dropout)
+        )
+        
+        # 2. GRU层 - 捕获长期依赖
+        self.gru = nn.GRU(
+            input_size=self.cnn_channels,
+            hidden_size=self.rnn_hidden,
+            batch_first=True
+        )
+        
+        # 3. Skip-GRU层 - 直接建模周期性（如果序列足够长）
+        self.skip_steps = max(1, input_len // self.skip)
+        if self.skip_steps > 0 and self.skip > 1:
+            self.skip_gru = nn.GRU(
+                input_size=self.cnn_channels,
+                hidden_size=self.skip_hidden,
+                batch_first=True
+            )
+            self.skip_linear = nn.Linear(self.skip_hidden, self.rnn_hidden)
+        else:
+            self.skip_gru = None
+            self.skip_linear = None
+        
+        # 4. 输出层
+        self.linear_out = nn.Sequential(
+            nn.Linear(self.rnn_hidden, 128),
+            nn.ReLU(),
+            nn.Dropout(self.dropout),
+            nn.Linear(128, output_len * num_targets)
+        )
+        
+        # 5. 自回归组件（Highway）- 增强预测稳定性
+        self.highway_window = min(self.highway_window, input_len)  # 确保不超过输入长度
+        if self.highway_window > 0:
+            self.highway = nn.Linear(self.highway_window * num_features, output_len * num_targets)
+        else:
+            self.highway = None
+        
+        # 初始化权重
+        self._init_weights()
+    
+    def _init_weights(self):
+        """权重初始化"""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Conv1d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+    
+    def forward(self, x):
+        """
+        前向传播
+        
+        Args:
+            x: (batch_size, input_len, num_features)
+        
+        Returns:
+            output: (batch_size, output_len, num_targets)
+        """
+        batch_size = x.size(0)
+        
+        # 1. CNN层
+        c = x.permute(0, 2, 1)  # (batch, features, seq_len)
+        c = self.conv(c)  # (batch, cnn_channels, seq_len)
+        c = c.permute(0, 2, 1)  # (batch, seq_len, cnn_channels)
+        
+        # 2. GRU层
+        gru_out, _ = self.gru(c)  # (batch, seq_len, rnn_hidden)
+        gru_last = gru_out[:, -1, :]  # (batch, rnn_hidden)
+        
+        # 3. Skip-GRU层（如果启用）
+        if self.skip_gru is not None and self.skip_linear is not None:
+            # 选择每隔skip步的时间点
+            skip_indices = list(range(0, c.size(1), self.skip))[-self.skip_steps:]
+            if len(skip_indices) > 0:
+                skip_c = c[:, skip_indices, :]  # (batch, skip_steps, cnn_channels)
+                skip_out, _ = self.skip_gru(skip_c)
+                skip_last = skip_out[:, -1, :]  # (batch, skip_hidden)
+                skip_feat = self.skip_linear(skip_last)  # (batch, rnn_hidden)
+                gru_last = gru_last + skip_feat
+        
+        # 4. 线性输出
+        out = self.linear_out(gru_last)  # (batch, output_len * num_targets)
+        
+        # 5. 自回归组件
+        if self.highway is not None:
+            hw_input = x[:, -self.highway_window:, :].contiguous()
+            hw_input = hw_input.view(batch_size, -1)
+            hw_out = self.highway(hw_input)
+            out = out + hw_out
+        
+        # 重塑为目标形状
+        output = out.view(batch_size, self.output_len, self.num_targets)
+        
+        return output
+
+
 def get_innovative_model(model_name, input_len, output_len, num_features, num_targets):
     """
     获取创新模型实例
@@ -685,6 +835,7 @@ def get_innovative_model(model_name, input_len, output_len, num_features, num_ta
         'Ensemble': EnsembleModel,
         'WaveNet': WaveNetModel,
         'NBEATS': NBEATSModel,
+        'LSTNet': LSTNetModel,  # 新增：适合小数据集的轻量级模型
     }
     
     if model_name not in models:
@@ -705,7 +856,7 @@ if __name__ == "__main__":
     
     x = torch.randn(batch_size, input_len, num_features)
     
-    for model_name in ['CNN_LSTM', 'TCN', 'WaveNet', 'NBEATS']:
+    for model_name in ['CNN_LSTM', 'TCN', 'WaveNet', 'LSTNet']:
         print(f"\n测试 {model_name} 模型:")
         model = get_innovative_model(model_name, input_len, output_len, num_features, num_targets)
         

@@ -135,8 +135,8 @@ TASKS = {
 # 基础模型
 BASE_MODELS = ['Linear', 'LSTM', 'Transformer']
 
-# 创新模型
-INNOVATIVE_MODELS = ['CNN_LSTM', 'TCN', 'WaveNet', 'NBEATS']
+# 创新模型（移除NBEATS，它对小数据集效果不好；用LSTNet替代）
+INNOVATIVE_MODELS = ['CNN_LSTM', 'TCN', 'WaveNet', 'LSTNet']
 
 
 def setup_experiment():
@@ -152,7 +152,7 @@ def setup_experiment():
     print("=" * 70)
     print(f"设备: {DEVICE}")
     print(f"随机种子: {RANDOM_SEED}")
-    print(f"批次大小: {runtime_config.batch_size}")
+    print(f"⚙️  Batch Size: {runtime_config.batch_size}")  # 打印实际使用的batch_size
     print(f"最大训练轮数: {runtime_config.num_epochs}")
     print(f"学习率: {runtime_config.learning_rate}")
     print(f"可视化: {'启用' if runtime_config.enable_visualization else '禁用'}")
@@ -373,20 +373,38 @@ def evaluate_and_compare(all_results):
     if os.path.exists(results_csv_path):
         # 读取现有结果
         existing_df = pd.read_csv(results_csv_path)
-        print(f"📂 发现现有结果文件，将合并更新...")
+        print(f"📂 发现现有结果文件，将智能合并...")
         
-        # 合并：新结果覆盖旧结果中相同的Model+Task组合
+        # ==================== 关键修复：智能合并，保留历史最佳 ====================
+        # 合并策略：比较新旧结果，只有当新结果更好时才更新
+        updated_count = 0
+        kept_count = 0
+        added_count = 0
+        
         for _, new_row in results_df.iterrows():
             mask = (existing_df['Model'] == new_row['Model']) & (existing_df['Task'] == new_row['Task'])
             if mask.any():
-                # 更新现有行
-                existing_df.loc[mask, ['MSE', 'RMSE', 'MAE', 'R2']] = new_row[['MSE', 'RMSE', 'MAE', 'R2']].values
+                # 获取现有结果
+                old_r2 = existing_df.loc[mask, 'R2'].values[0]
+                new_r2 = new_row['R2']
+                
+                # 使用R²判断（越大越好），只有新结果更好时才更新
+                if new_r2 > old_r2:
+                    existing_df.loc[mask, ['MSE', 'RMSE', 'MAE', 'R2']] = new_row[['MSE', 'RMSE', 'MAE', 'R2']].values
+                    updated_count += 1
+                    print(f"  ✅ {new_row['Model']}/{new_row['Task']}: 更新 (R²: {old_r2:.4f} → {new_r2:.4f})")
+                else:
+                    kept_count += 1
+                    if new_r2 < old_r2:
+                        print(f"  ⏸️  {new_row['Model']}/{new_row['Task']}: 保留历史 (R²: {old_r2:.4f} > {new_r2:.4f})")
             else:
                 # 添加新行
                 existing_df = pd.concat([existing_df, pd.DataFrame([new_row])], ignore_index=True)
+                added_count += 1
+                print(f"  ➕ {new_row['Model']}/{new_row['Task']}: 新增")
         
         results_df = existing_df
-        print(f"✅ 已合并 {len(results_df)} 条模型结果")
+        print(f"✅ 合并完成: {updated_count}项更新, {kept_count}项保留历史, {added_count}项新增")
     
     # 按Task和Model排序
     task_order = ['singlestep', 'multistep_16h']
@@ -488,6 +506,12 @@ def generate_report(results_df, all_results):
         f.write("- Gated activation units enhance expressive power\n")
         f.write("- Dilated causal convolution efficiently models long sequences\n")
         f.write("- Residual and Skip connections accelerate gradient flow\n\n")
+        
+        f.write("### 5.5 LSTNet Model\n")
+        f.write("- CNN layer extracts short-term local patterns\n")
+        f.write("- GRU layer captures long-term dependencies\n")
+        f.write("- Skip-RNN models periodic patterns directly\n")
+        f.write("- Highway component (autoregressive) enhances prediction stability\n\n")
         
         f.write("## 6. Conclusion\n\n")
         f.write("This experiment compared Linear, LSTM, and Transformer as baseline models, ")

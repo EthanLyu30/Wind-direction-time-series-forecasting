@@ -18,6 +18,12 @@ from config import (
     DEVICE, LEARNING_RATE, NUM_EPOCHS, EARLY_STOPPING_PATIENCE,
     WEIGHT_DECAY, MODELS_DIR, LOGS_DIR
 )
+
+# 尝试导入AMP配置（可能不存在于旧配置中）
+try:
+    from config import USE_AMP
+except ImportError:
+    USE_AMP = False
 from datetime import datetime
 import json
 
@@ -137,9 +143,10 @@ def calculate_metrics(y_true, y_pred):
     }
 
 
-def train_epoch(model, dataloader, criterion, optimizer, device=DEVICE):
+def train_epoch(model, dataloader, criterion, optimizer, device=DEVICE, 
+                scaler=None, use_amp=False):
     """
-    训练一个epoch
+    训练一个epoch（支持混合精度训练）
     
     Args:
         model: 模型
@@ -147,6 +154,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device=DEVICE):
         criterion: 损失函数
         optimizer: 优化器
         device: 设备
+        scaler: GradScaler（用于混合精度训练）
+        use_amp: 是否使用混合精度训练
         
     Returns:
         平均损失
@@ -159,18 +168,26 @@ def train_epoch(model, dataloader, criterion, optimizer, device=DEVICE):
         x = x.to(device)
         y = y.to(device)
         
-        # 前向传播
         optimizer.zero_grad()
-        output = model(x)
-        loss = criterion(output, y)
         
-        # 反向传播
-        loss.backward()
-        
-        # 梯度裁剪
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        
-        optimizer.step()
+        # 混合精度训练
+        if use_amp and scaler is not None:
+            with torch.amp.autocast('cuda'):
+                output = model(x)
+                loss = criterion(output, y)
+            
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            # 标准训练
+            output = model(x)
+            loss = criterion(output, y)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
         
         total_loss += loss.item()
         num_batches += 1
@@ -322,6 +339,12 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=actual_lr, weight_decay=WEIGHT_DECAY)
     
+    # 混合精度训练设置（用于A100等高端GPU加速）
+    use_amp = USE_AMP and device.type == 'cuda'
+    scaler = torch.amp.GradScaler('cuda') if use_amp else None
+    if use_amp and verbose:
+        print(f"⚡ 混合精度训练(AMP): 已启用")
+    
     # 使用 CosineAnnealingWarmRestarts 学习率调度器（更适合长期训练）
     # 结合 ReduceLROnPlateau 作为后备
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
@@ -382,8 +405,9 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     
     for epoch_idx in progress_bar:
         actual_epoch = start_epoch + epoch_idx
-        # 训练
-        train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+        # 训练（支持混合精度）
+        train_loss = train_epoch(model, train_loader, criterion, optimizer, device,
+                                 scaler=scaler, use_amp=use_amp)
         
         # 验证
         val_loss, val_preds, val_targets = evaluate(model, val_loader, criterion, device)

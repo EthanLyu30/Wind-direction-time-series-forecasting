@@ -24,6 +24,12 @@ from config import (
     BATCH_SIZE
 )
 
+# 尝试导入NUM_WORKERS配置（可能不存在于旧配置中）
+try:
+    from config import NUM_WORKERS
+except ImportError:
+    NUM_WORKERS = 0
+
 
 def load_parquet_data(data_path, height_value):
     """
@@ -490,10 +496,13 @@ def create_dataloaders(df, input_len, output_len, batch_size=BATCH_SIZE):
         scaler_targets=train_dataset.scaler_targets
     )
     
-    # 创建数据加载器
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
+    # 创建数据加载器（使用多线程加速数据加载）
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, 
+                              drop_last=True, num_workers=NUM_WORKERS, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, 
+                            drop_last=False, num_workers=NUM_WORKERS, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, 
+                             drop_last=False, num_workers=NUM_WORKERS, pin_memory=True)
     
     return (train_loader, val_loader, test_loader, 
             train_dataset.scaler_features, train_dataset.scaler_targets,
