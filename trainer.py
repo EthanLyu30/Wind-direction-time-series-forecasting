@@ -348,10 +348,10 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     # 使用 CosineAnnealingWarmRestarts 学习率调度器（更适合长期训练）
     # 结合 ReduceLROnPlateau 作为后备
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer, T_0=10, T_mult=2, eta_min=actual_lr * 0.01
+        optimizer, T_0=20, T_mult=2, eta_min=actual_lr * 0.001  # 更长周期，更低最小学习率
     )
     plateau_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', factor=0.5, patience=8
+        optimizer, mode='min', factor=0.5, patience=15  # 更宽松的plateau检测
     )
     
     early_stopping = EarlyStopping(patience=actual_patience, mode=metric_mode)
