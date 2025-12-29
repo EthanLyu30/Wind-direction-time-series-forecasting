@@ -54,6 +54,7 @@ from data_loader import (
 )
 from models import get_model, count_parameters
 from models_innovative import get_innovative_model
+from models_advanced import get_advanced_model
 from trainer import (
     train_model, test_model, load_model, 
     print_test_results, compare_models
@@ -138,6 +139,9 @@ BASE_MODELS = ['Linear', 'LSTM', 'Transformer']
 # 创新模型（移除NBEATS，它对小数据集效果不好；用LSTNet替代）
 INNOVATIVE_MODELS = ['CNN_LSTM', 'TCN', 'WaveNet', 'LSTNet']
 
+# 高级创新模型（利用多高度空间结构）
+ADVANCED_MODELS = ['HeightAttention', 'DLinear']
+
 
 def setup_experiment():
     """设置实验环境"""
@@ -203,7 +207,7 @@ def visualize_dataset(df):
     plot_dataset_overview(df, save_path=save_path)
 
 
-def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
+def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False, is_advanced=False):
     """
     训练所有模型
     
@@ -212,11 +216,17 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
         model_list: 要训练的模型列表
         tasks_to_run: 要运行的任务列表（默认全部）
         is_innovative: 是否为创新模型
+        is_advanced: 是否为高级创新模型（HeightAttention, DLinear）
     """
     if tasks_to_run is None:
         tasks_to_run = list(TASKS.keys())
     
-    model_type = "创新模型" if is_innovative else "基础模型"
+    if is_advanced:
+        model_type = "高级创新模型"
+    elif is_innovative:
+        model_type = "创新模型"
+    else:
+        model_type = "基础模型"
     print(f"\n" + "=" * 70)
     print(f"步骤3: 训练{model_type}")
     print("=" * 70)
@@ -266,7 +276,9 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
             print(f"\n--- 训练 {model_name} ---")
             
             # 创建模型
-            if is_innovative:
+            if is_advanced:
+                model = get_advanced_model(model_name, input_len, output_len, num_features, num_targets)
+            elif is_innovative:
                 model = get_innovative_model(model_name, input_len, output_len, num_features, num_targets)
             else:
                 model = get_model(model_name, input_len, output_len, num_features, num_targets)
@@ -548,9 +560,10 @@ def main(args):
             # 用户指定了模型
             selected_base = [m for m in runtime_config.selected_models if m in BASE_MODELS]
             selected_innovative = [m for m in runtime_config.selected_models if m in INNOVATIVE_MODELS]
+            selected_advanced = [m for m in runtime_config.selected_models if m in ADVANCED_MODELS]
             
             # 检查是否有无效的模型名
-            all_valid_models = BASE_MODELS + INNOVATIVE_MODELS
+            all_valid_models = BASE_MODELS + INNOVATIVE_MODELS + ADVANCED_MODELS
             invalid_models = [m for m in runtime_config.selected_models if m not in all_valid_models]
             if invalid_models:
                 print(f"⚠️ 未知模型: {invalid_models}")
@@ -558,6 +571,7 @@ def main(args):
         else:
             selected_base = BASE_MODELS
             selected_innovative = INNOVATIVE_MODELS
+            selected_advanced = []  # 默认不训练高级模型，需要显式指定
         
         all_results = {}
         
@@ -579,6 +593,14 @@ def main(args):
                 if task_name not in all_results:
                     all_results[task_name] = {}
                 all_results[task_name].update(innovative_results[task_name])
+        
+        # 训练高级创新模型（HeightAttention, DLinear）
+        if selected_advanced:
+            advanced_results = train_all_models(df, selected_advanced, tasks_to_run=selected_tasks, is_innovative=True, is_advanced=True)
+            for task_name in advanced_results:
+                if task_name not in all_results:
+                    all_results[task_name] = {}
+                all_results[task_name].update(advanced_results[task_name])
         
         # 评估和对比
         if all_results:
@@ -605,7 +627,7 @@ if __name__ == "__main__":
                        choices=['all', 'train', 'eval', 'visualize'],
                        help='运行模式: all(完整实验), train(仅训练), eval(仅评估), visualize(仅可视化)')
     parser.add_argument('--models', type=str, nargs='+', default=None,
-                       help='指定要训练的模型，如: --models LSTM Transformer')
+                       help='指定要训练的模型，如: --models LSTM Transformer HeightAttention DLinear')
     parser.add_argument('--tasks', type=str, nargs='+', default=None,
                        help='指定要运行的任务，如: --tasks singlestep multistep_16h')
     parser.add_argument('--no-viz', action='store_true',
