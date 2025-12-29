@@ -127,13 +127,13 @@ WEIGHT_DECAY = 1e-5
 TASK_SPECIFIC_HYPERPARAMS = {
     'singlestep': {
         'lr': 0.001,          # 短期预测：正常学习率
-        'patience': 15,       # 标准早停
+        'patience': 20,       # 标准早停
         'min_epochs': 50,     # 至少训练50个epoch
     },
     'multistep_16h': {
-        'lr': 0.0003,         # 长期预测：显著降低学习率（关键！）
-        'patience': 25,       # 宽松早停，允许更多探索
-        'min_epochs': 80,     # 至少训练80个epoch
+        'lr': 0.0001,         # 长期预测：更低学习率避免快速收敛到局部最优
+        'patience': 40,       # 更宽松早停，允许更充分探索
+        'min_epochs': 100,    # 至少训练100个epoch
     }
 }
 
@@ -158,30 +158,30 @@ LINEAR_CONFIG = {
 
 # LSTM模型配置
 LSTM_CONFIG = {
-    'hidden_size': 256,      # 增大隐藏层（原128）
-    'num_layers': 3,         # 增加层数（原2）
-    'dropout': 0.3,          # 增加dropout防止过拟合
+    'hidden_size': 384,      # 进一步增大隐藏层以提升表达能力
+    'num_layers': 4,         # 增加层数以捕获更复杂的时序模式
+    'dropout': 0.25,         # 适度降低dropout，允许更多信息流通
     'bidirectional': True,
 }
 
 # Transformer模型配置
 TRANSFORMER_CONFIG = {
-    'd_model': 128,            # 增大模型维度（原64）
-    'nhead': 8,                # 增加注意力头数（原4）
-    'num_encoder_layers': 4,   # 增加层数（原3）
-    'num_decoder_layers': 4,   # 增加层数（原3）
-    'dim_feedforward': 512,    # 增大前馈层（原256）
-    'dropout': 0.2,            # 增加dropout
+    'd_model': 192,            # 进一步增大模型维度
+    'nhead': 8,                # 保持注意力头数
+    'num_encoder_layers': 5,   # 增加编码器层数
+    'num_decoder_layers': 5,   # 增加解码器层数
+    'dim_feedforward': 768,    # 增大前馈层
+    'dropout': 0.15,           # 适度降低dropout
 }
 
 # ==================== 创新模型配置 ====================
 # CNN-LSTM混合模型配置
 CNN_LSTM_CONFIG = {
-    'cnn_channels': [32, 32],      # 减少通道数（原[32,64]）
+    'cnn_channels': [48, 64],      # 增加通道数以提升特征提取能力
     'kernel_size': 3,
-    'lstm_hidden_size': 64,        # 减少隐藏单元（原64，已合理）
-    'lstm_num_layers': 2,          # 减少层数（原2，已合理）
-    'dropout': 0.3,                # 增加dropout防止过拟合（原0.2）
+    'lstm_hidden_size': 96,        # 增大隐藏单元
+    'lstm_num_layers': 2,          # 保持层数
+    'dropout': 0.2,                # 适度降低dropout
 }
 
 # N-BEATS模型配置（纯MLP架构，简单高效）
@@ -195,19 +195,19 @@ NBEATS_CONFIG = {
 }
 
 # TCN (Temporal Convolutional Network) 配置
-# 优化版本：减少通道数以加快训练速度
+# 优化版本：增加通道数和层数以提升性能
 TCN_CONFIG = {
-    'num_channels': [32, 64, 64],  # 保持通道数（已优化）
+    'num_channels': [48, 64, 96],  # 增加通道数和层数
     'kernel_size': 3,
-    'dropout': 0.3,                # 增加dropout（原0.2）
+    'dropout': 0.2,                # 适度降低dropout
 }
 
 # WaveNet模型配置
 WAVENET_CONFIG = {
-    'num_channels': 64,            # 减少通道数（原64，已合理）
-    'num_blocks': 8,               # 保持块数（8个已足够）
+    'num_channels': 96,            # 增加通道数以提升表达能力
+    'num_blocks': 10,              # 增加块数以扩大感受野
     'kernel_size': 2,              # 保持卷积核（标准设置）
-    'dropout': 0.3,                # 增加dropout防止过拟合
+    'dropout': 0.2,                # 适度降低dropout
 }
 
 # 集成模型配置
@@ -218,13 +218,13 @@ ENSEMBLE_CONFIG = {
 
 # LSTNet模型配置（轻量级，适合小数据集）
 LSTNET_CONFIG = {
-    'cnn_channels': 32,         # CNN通道数
+    'cnn_channels': 48,         # 增加CNN通道数
     'cnn_kernel': 3,            # CNN卷积核大小
-    'rnn_hidden': 64,           # GRU隐藏层大小
-    'skip_hidden': 32,          # Skip-GRU隐藏层大小
+    'rnn_hidden': 96,           # 增大GRU隐藏层
+    'skip_hidden': 48,          # 增大Skip-GRU隐藏层
     'skip': 4,                  # 跳跃步长（用于捕获周期性）
-    'highway_window': 4,        # 自回归窗口大小
-    'dropout': 0.2,             # dropout率
+    'highway_window': 6,        # 增大自回归窗口
+    'dropout': 0.15,            # 适度降低dropout
 }
 
 # ==================== 随机种子 ====================

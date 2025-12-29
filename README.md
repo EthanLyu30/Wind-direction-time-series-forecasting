@@ -74,6 +74,72 @@ python main.py --mode eval
 python main.py --mode visualize
 ```
 
+### 详细训练指令
+
+#### 基础训练命令
+```bash
+# 完整训练（推荐首次运行）
+python main.py --epochs 200 --no-viz
+
+# 服务器训练（禁用可视化，节省资源）
+python main.py --mode train --epochs 200 --no-viz
+```
+
+#### 继续训练/微调（从检查点恢复）
+```bash
+# 继续训练所有模型
+python main.py --resume --epochs 300 --no-viz
+
+# 继续训练特定任务（如多步预测效果不好时）
+python main.py --resume --tasks multistep_16h --epochs 400 --no-viz
+
+# 继续训练特定模型
+python main.py --resume --models LSTM WaveNet Transformer --epochs 300 --no-viz
+
+# 组合使用：只训练多步预测任务的LSTM和WaveNet
+python main.py --resume --models LSTM WaveNet --tasks multistep_16h --epochs 400 --no-viz
+```
+
+#### 自定义超参数
+```bash
+# 手动指定学习率和早停耐心值
+python main.py --lr 0.0001 --patience 50 --epochs 300 --no-viz
+
+# 指定batch size（根据GPU显存调整）
+python main.py --batch-size 128 --epochs 200 --no-viz
+
+# 指定评估指标模式
+python main.py --metric-mode r2 --epochs 200 --no-viz  # 使用R²作为早停指标
+python main.py --metric-mode mse --epochs 200 --no-viz # 使用MSE作为早停指标
+```
+
+#### GPU服务器推荐配置
+```bash
+# A100/H100 高端GPU（40GB+显存）
+python main.py --batch-size 512 --epochs 300 --resume --no-viz
+
+# RTX 3090/4090（24GB显存）
+python main.py --batch-size 256 --epochs 250 --resume --no-viz
+
+# RTX 3060/3070（8-12GB显存）
+python main.py --batch-size 128 --epochs 200 --resume --no-viz
+```
+
+#### 命令行参数说明
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--mode` | 运行模式: all/train/eval/visualize | all |
+| `--models` | 指定训练的模型列表 | 全部模型 |
+| `--tasks` | 指定训练的任务: singlestep/multistep_16h | 全部任务 |
+| `--epochs` | 最大训练轮数 | 100 |
+| `--batch-size` | 批次大小 | 自动检测 |
+| `--lr` | 学习率 | 任务自适应 |
+| `--patience` | 早停耐心值 | 任务自适应 |
+| `--resume` | 从检查点继续训练 | False |
+| `--no-viz` | 禁用可视化图表生成 | False |
+| `--metric-mode` | 评估指标: r2/mse/combined | 任务自适应 |
+
 ## 🧠 模型介绍
 
 ### 基础模型 (75%评分要求)
@@ -89,9 +155,10 @@ python main.py --mode visualize
 | 模型 | 创新点 |
 |------|--------|
 | **CNN-LSTM** | 多尺度卷积特征提取 + LSTM序列建模 + 注意力机制 |
-| **Attention-LSTM** | 自注意力增强 + 时序注意力 + 多头并行处理 |
 | **TCN** | 因果卷积 + 膨胀卷积扩大感受野 + 残差连接 |
 | **WaveNet** | 门控激活单元 + 膨胀因果卷积 + Skip连接 |
+| **LSTNet** | CNN短期模式提取 + GRU长期依赖 + Skip-RNN周期建模 |
+| **NBEATS** | 纯MLP架构 + 残差学习 + 双堆栈预测 |
 
 ## 📊 评估指标
 
@@ -144,9 +211,10 @@ python main.py --mode visualize
 | 模型 | 单步预测 | 多步预测 |
 |------|----------|----------|
 | **CNN_LSTM** | `CNN_LSTM_singlestep.pth` | `CNN_LSTM_multistep_16h.pth` |
-| **Attention_LSTM** | `Attention_LSTM_singlestep.pth` | `Attention_LSTM_multistep_16h.pth` |
 | **TCN** | `TCN_singlestep.pth` | `TCN_multistep_16h.pth` |
 | **WaveNet** | `WaveNet_singlestep.pth` | `WaveNet_multistep_16h.pth` |
+| **LSTNet** | `LSTNet_singlestep.pth` | `LSTNet_multistep_16h.pth` |
+| **NBEATS** | `NBEATS_singlestep.pth` | `NBEATS_multistep_16h.pth` |
 
 ## 📁 输出文件
 
@@ -170,13 +238,14 @@ python main.py --mode visualize
 - 注意力机制自适应加权重要时间步
 ```
 
-### 2. Attention-LSTM模型
+### 2. LSTNet模型
 ```
 优势：
-- 自注意力增强输入特征表示
-- 时序注意力聚焦关键历史时间点
-- 多头注意力并行处理不同子空间信息
-- 层归一化稳定训练
+- CNN层提取短期局部时序模式
+- GRU层捕获长期时序依赖
+- Skip-RNN直接建模周期性模式
+- Highway自回归组件增强预测稳定性
+- 参数量适中，适合中小规模数据集
 ```
 
 ### 3. TCN (Temporal Convolutional Network)
@@ -201,20 +270,53 @@ python main.py --mode visualize
 
 主要超参数在 `config.py` 中配置：
 
+### 全局默认配置
 ```python
-BATCH_SIZE = 64
-LEARNING_RATE = 0.001
-NUM_EPOCHS = 100
-EARLY_STOPPING_PATIENCE = 15
+BATCH_SIZE = 自动检测（根据GPU显存）  # A100: 512, RTX 3090: 256, RTX 3060: 128
+LEARNING_RATE = 0.001                   # 默认学习率（会被任务特定配置覆盖）
+NUM_EPOCHS = 100                        # 默认最大训练轮数
+EARLY_STOPPING_PATIENCE = 15            # 默认早停耐心值
+WEIGHT_DECAY = 1e-5                     # L2正则化权重
 ```
+
+### 任务特定超参数（自动应用）
+```python
+TASK_SPECIFIC_HYPERPARAMS = {
+    'singlestep': {
+        'lr': 0.001,          # 短期预测：正常学习率
+        'patience': 20,       # 标准早停
+        'min_epochs': 50,     # 至少训练50个epoch
+    },
+    'multistep_16h': {
+        'lr': 0.0001,         # 长期预测：更低学习率避免快速收敛到局部最优
+        'patience': 40,       # 更宽松早停，允许更充分探索
+        'min_epochs': 100,    # 至少训练100个epoch
+    }
+}
+```
+
+### 学习率调度器
+- **CosineAnnealingWarmRestarts**: T_0=20, T_mult=2, eta_min=lr×0.001
+- **ReduceLROnPlateau**: factor=0.5, patience=15
+
+### 模型配置概览
+| 模型 | 关键参数 | 参数量 |
+|------|---------|--------|
+| Linear | hidden=[128,64,32], dropout=0.2 | ~34K |
+| LSTM | hidden=384, layers=4, bidirectional | ~6M |
+| Transformer | d_model=192, heads=8, layers=5 | ~3M |
+| CNN_LSTM | cnn=[48,64], lstm_hidden=96 | ~300K |
+| TCN | channels=[48,64,96], kernel=3 | ~100K |
+| WaveNet | channels=96, blocks=10 | ~350K |
+| LSTNet | cnn=48, rnn=96, skip=48 | ~150K |
 
 ## 📈 实验结果分析
 
 ### 模型性能排名
 
-**单步预测 (8h→1h)**：LSTM > Linear > TCN > CNN_LSTM > WaveNet > Transformer > Attention_LSTM
+**单步预测 (8h→1h)**：LSTM > Linear > TCN > LSTNet > CNN_LSTM > WaveNet > Transformer
 
-**多步预测 (8h→16h)**：Linear > WaveNet > LSTM > CNN_LSTM > Attention_LSTM > TCN > Transformer
+**多步预测 (8h→16h)**：Linear > LSTM > WaveNet > Transformer > CNN_LSTM > TCN > LSTNet
 
 ### 为什么简单模型表现好？
 
