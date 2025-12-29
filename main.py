@@ -136,7 +136,7 @@ TASKS = {
 BASE_MODELS = ['Linear', 'LSTM', 'Transformer']
 
 # 创新模型
-INNOVATIVE_MODELS = ['CNN_LSTM', 'Attention_LSTM', 'TCN', 'WaveNet']
+INNOVATIVE_MODELS = ['CNN_LSTM', 'TCN', 'WaveNet', 'NBEATS']
 
 
 def setup_experiment():
