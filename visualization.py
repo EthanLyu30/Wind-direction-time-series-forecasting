@@ -167,7 +167,7 @@ def plot_dataset_overview(df, save_path=None):
     plt.close()
 
 
-def plot_training_history(history, model_name, task_name, save_path=None, previous_epochs=0):
+def plot_training_history(history, model_name, task_name, save_path=None, previous_epochs=0, archive=True):
     """
     绘制训练历史（包含所有微调过程）
     
@@ -177,7 +177,9 @@ def plot_training_history(history, model_name, task_name, save_path=None, previo
         task_name: 任务名称
         save_path: 保存路径
         previous_epochs: 之前的训练轮数（用于标记微调分界点）
+        archive: 是否保存历史归档版本（带时间戳）
     """
+    from datetime import datetime
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
     
     epochs = range(1, len(history['train_loss']) + 1)
@@ -236,8 +238,20 @@ def plot_training_history(history, model_name, task_name, save_path=None, previo
     plt.tight_layout()
     
     if save_path:
+        # 保存当前版本（会覆盖）
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"图像已保存至: {save_path}")
+        
+        # 保存归档版本（不覆盖，带时间戳）
+        if archive and previous_epochs > 0:  # 只在微调时保存归档
+            archive_dir = os.path.join(os.path.dirname(save_path), 'history_archive')
+            os.makedirs(archive_dir, exist_ok=True)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            total_epochs = len(history.get('train_loss', []))
+            archive_name = f"{model_name}_{task_name}_epochs{total_epochs}_{timestamp}.png"
+            archive_path = os.path.join(archive_dir, archive_name)
+            plt.savefig(archive_path, dpi=150, bbox_inches='tight')
+            print(f"  📁 归档版本: {archive_path}")
     
     plt.close()
 

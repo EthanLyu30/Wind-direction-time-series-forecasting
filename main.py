@@ -78,6 +78,7 @@ class RuntimeConfig:
         self.enable_visualization = True  # 是否启用可视化
         self.resume_training = False  # 是否从检查点继续训练
         self.selected_models = None  # 指定要训练的模型列表
+        self.metric_mode = None  # 评估指标模式 (None表示自动选择)
         
     def update_from_args(self, args):
         """从命令行参数更新配置"""
@@ -107,6 +108,10 @@ class RuntimeConfig:
             print(f"📋 仅训练指定任务: {', '.join(args.tasks)}")
         else:
             self.selected_tasks = None
+        if hasattr(args, 'metric_mode') and args.metric_mode is not None:
+            self.metric_mode = args.metric_mode
+            mode_desc = {'r2': 'R²(越大越好)', 'mse': 'MSE(越小越好)', 'combined': '综合指标'}
+            print(f"📊 评估指标模式: {mode_desc.get(self.metric_mode, self.metric_mode)}")
 
 # 全局运行时配置实例
 runtime_config = RuntimeConfig()
@@ -273,7 +278,8 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
             print(f"模型参数量: {count_parameters(model):,}")
             
             # 训练（使用任务特定的超参）
-            print(f"📊 使用超参: lr={final_lr:.6f}, patience={final_patience}, epochs={final_epochs}")
+            metric_mode_str = runtime_config.metric_mode if runtime_config.metric_mode else ('r2' if task_name == 'multistep_16h' else 'mse')
+            print(f"📊 使用超参: lr={final_lr:.6f}, patience={final_patience}, epochs={final_epochs}, metric={metric_mode_str}")
             history = train_model(
                 model, train_loader, val_loader,
                 model_name=model_name,
@@ -284,7 +290,8 @@ def train_all_models(df, model_list, tasks_to_run=None, is_innovative=False):
                 device=DEVICE,
                 save_best=True,
                 verbose=True,
-                resume=runtime_config.resume_training  # 支持继续训练
+                resume=runtime_config.resume_training,  # 支持继续训练
+                metric_mode=runtime_config.metric_mode  # 评估指标模式（None表示自动选择）
             )
             
             # 绘制训练历史（从检查点读取完整历史，包含所有微调过程）
@@ -594,6 +601,9 @@ if __name__ == "__main__":
                        help='早停的耐心值')
     parser.add_argument('--resume', action='store_true',
                        help='从已有检查点继续训练（迭代优化模型）')
+    parser.add_argument('--metric-mode', type=str, default=None,
+                       choices=['r2', 'mse', 'combined'],
+                       help='评估指标模式: r2(R²越大越好), mse(MSE越小越好), combined(综合指标)')
     
     args = parser.parse_args()
     main(args)

@@ -1,193 +1,178 @@
-# 🌬️ 风速预测模型效果分析报告
+# 🌬️ 风速预测模型 - 项目分析与优化报告
 
-## 📊 实验结果概览
+## 📋 项目状态检查
 
-基于你的训练结果（`results/model_comparison.csv`），以下是各模型在三个预测任务上的性能对比：
+### ✅ 任务要求完成情况
 
-### 单步预测 (8小时 → 1小时)
-
-| 模型 | MSE | RMSE | MAE | R² |
-|------|-----|------|-----|-----|
-| **LSTM** 🥇 | 0.861 | 0.928 | 0.701 | **0.884** |
-| **Transformer** 🥈 | 0.878 | 0.937 | 0.707 | **0.882** |
-| TCN | 0.891 | 0.944 | 0.722 | 0.880 |
-| Linear | 0.903 | 0.950 | 0.728 | 0.878 |
-| CNN_LSTM | 0.915 | 0.957 | 0.727 | 0.877 |
-| WaveNet | 0.947 | 0.973 | 0.739 | 0.872 |
-| Attention_LSTM | 1.010 | 1.005 | 0.762 | 0.864 |
-
-### 多步预测-1h (8小时 → 1小时)
-
-| 模型 | MSE | RMSE | MAE | R² |
-|------|-----|------|-----|-----|
-| **Transformer** 🥇 | 0.864 | 0.929 | 0.704 | **0.884** |
-| **Attention_LSTM** 🥈 | 0.896 | 0.947 | 0.723 | **0.879** |
-| LSTM | 0.897 | 0.947 | 0.713 | 0.879 |
-| Linear | 0.897 | 0.947 | 0.725 | 0.879 |
-| TCN | 0.930 | 0.964 | 0.731 | 0.875 |
-| CNN_LSTM | 0.933 | 0.966 | 0.733 | 0.874 |
-| WaveNet | 1.047 | 1.023 | 0.783 | 0.859 |
-
-### 多步预测-16h (8小时 → 16小时) ⚠️ 最难的任务
-
-| 模型 | MSE | RMSE | MAE | R² |
-|------|-----|------|-----|-----|
-| **Attention_LSTM** 🥇 | 3.550 | 1.884 | 1.477 | **0.523** |
-| **LSTM** 🥈 | 3.648 | 1.910 | 1.492 | **0.510** |
-| Linear | 3.742 | 1.934 | 1.508 | 0.497 |
-| TCN | 3.760 | 1.939 | 1.508 | 0.495 |
-| Transformer | 4.149 | 2.037 | 1.606 | 0.443 |
-| CNN_LSTM | 4.329 | 2.081 | 1.650 | 0.418 |
-| WaveNet | 5.191 | 2.278 | 1.771 | 0.303 |
+| 要求 | 状态 | 说明 |
+|------|------|------|
+| 根据风向、温度、气压、湿度预测风速 | ✅ 已实现 | 使用多特征输入 |
+| 单步预测（8h→1h） | ✅ 已实现 | `singlestep` 任务 |
+| 多步预测（8h→1h） | ✅ 已实现 | `multistep_1h` 任务 |
+| 多步预测（8h→16h） | ✅ **已修复** | 原为24h→16h，现已改为8h→16h |
+| 数据集划分 7:2:1 | ✅ 已实现 | 训练:验证:测试 = 70%:20%:10% |
+| 特征工程（缺失值/异常值） | ✅ 已实现 | 插值法 + IQR异常值处理 |
+| 对比至少3个模型 | ✅ 已实现 | 7个模型：Linear, LSTM, Transformer, CNN_LSTM, Attention_LSTM, TCN, WaveNet |
+| MSE/RMSE/MAE/R² 评估 | ✅ 已实现 | 完整的指标计算 |
+| 可视化数据集及预测结果 | ✅ 已实现 | 多种可视化图表 |
+| 保存模型为pth格式 | ✅ 已实现 | 共21个模型（7模型×3任务） |
 
 ---
 
-## 🔍 分析与结论
+## 🔧 本次优化内容
 
-### 1. 最佳模型推荐
+### 1. 修复任务配置
+- **问题**：`multistep_16h` 任务配置为24h→16h，不符合作业要求的8h→16h
+- **修复**：已将 `MULTI_STEP_2_INPUT_LEN` 从24改为8
 
-| 预测任务 | 最佳模型 | 原因 |
-|----------|----------|------|
-| 单步预测 | **LSTM** | R²=0.884，最低的MSE和RMSE |
-| 多步1h | **Transformer** | R²=0.884，自注意力机制捕捉长期依赖 |
-| 多步16h | **Attention_LSTM** | R²=0.523，注意力机制帮助长期预测 |
+### 2. 优化评估指标选择策略
+- **问题**：原代码统一使用R²作为模型选择标准
+- **优化**：现支持根据任务类型自动选择：
+  - `multistep_16h`：使用 **R²**（长期预测，R²更能反映模型解释能力）
+  - `singlestep` / `multistep_1h`：使用 **MSE**（短期预测，直接最小化误差）
+  - 可通过 `metric_mode` 参数手动指定：`'r2'`, `'mse'`, `'combined'`
 
-### 2. 关键发现
+### 3. 添加训练历史归档
+- **问题**：每次微调后可视化图像会覆盖之前的版本
+- **优化**：
+  - 添加 `history_archive/` 目录保存带时间戳的历史版本
+  - 添加训练日志（JSONL格式），记录每次训练/微调的详细信息
 
-#### ✅ 表现良好
-- **短期预测（单步、多步1h）** 所有模型R²都在0.86-0.88，说明效果不错
-- **LSTM类模型** 在时序预测上表现稳定
-- **Transformer** 在多步1h上表现最好
-
-#### ⚠️ 需要改进
-- **16小时长期预测** 所有模型R²都低于0.53，说明这是一个很难的任务
-- **WaveNet** 整体表现较差，可能需要更多训练或调参
-- **创新模型** 除Attention_LSTM外，其他创新模型未超越基础模型
-
-### 3. 为什么训练轮数没跑完就停止了？
-
-这是因为**早停机制（Early Stopping）**在起作用：
-
-```python
-# config.py
-EARLY_STOPPING_PATIENCE = 15  # 连续15轮验证损失没有改善就停止
-```
-
-**作用**：
-- 防止过拟合
-- 节省训练时间
-- 自动保存最佳模型
-
-**你看到的现象**：模型可能在epoch 30-50就停止了，因为验证损失不再下降。
+### 4. 清理冗余文件
+- 删除了 `init_git.bat` 和 `init_git.sh`（一次性脚本，项目已是Git仓库）
 
 ---
 
-## 🚀 改进建议
+## 📊 当前模型性能概览
 
-### 方案1：增大训练容量（云服务器推荐）
+| 模型 | 任务 | 最佳R² | 最佳MSE | 训练轮数 |
+|------|------|--------|---------|----------|
+| LSTM | multistep_16h | 0.3647 | 0.6525 | 32 |
+| Linear | multistep_16h | 0.3153 | 0.4853 | 35 |
+| Transformer | multistep_16h | 0.2334 | 0.7676 | 32 |
+| CNN_LSTM | multistep_16h | 0.2145 | 0.6906 | 34 |
+| WaveNet | multistep_16h | 0.1611 | 0.6299 | 31 |
+| TCN | multistep_16h | 0.0905 | 0.7308 | 31 |
+| Attention_LSTM | multistep_16h | -0.0392 | 0.8235 | 32 |
+
+**注意**：由于任务配置已从24h→16h改为8h→16h，建议**重新训练**所有 `multistep_16h` 模型。
+
+---
+
+## 🚀 微调建议
+
+### 方案1：重新训练 multistep_16h 模型
+由于输入窗口从24h改为8h，历史模型需要重新训练：
 
 ```bash
-# 在云服务器上运行
-python train_gpu.py --epochs 200 --patience 30 --batch_size 128 --lr 0.0005
+python main.py --mode train --tasks multistep_16h --epochs 150 --no-viz
 ```
 
-参数说明：
-- `--epochs 200`：增加到200轮
-- `--patience 30`：早停耐心值增加到30
-- `--batch_size 128`：GPU上可以用更大batch
-- `--lr 0.0005`：稍微降低学习率
+### 方案2：继续微调现有模型
+对于 singlestep 和 multistep_1h 任务，可以继续微调：
 
-### 方案2：超参数调优
+```bash
+python main.py --mode train --tasks singlestep multistep_1h --resume --epochs 300 --lr 0.0005
+```
 
-建议尝试的改进：
+### 方案3：针对长期预测的优化建议
 
-| 参数 | 当前值 | 建议值 | 原因 |
-|------|--------|--------|------|
-| hidden_size | 128 | 256 | 增加模型容量 |
-| num_layers | 2 | 3 | 更深的网络 |
-| learning_rate | 0.001 | 0.0005 | 更稳定的收敛 |
-| dropout | 0.2 | 0.3 | 防止过拟合 |
-| input_length | 8 | 24 | 更多历史信息（1天） |
+16小时长期预测是最难的任务（当前最佳R²仅0.36），建议：
 
-### 方案3：针对16h长期预测优化
+1. **增加模型容量**：
+   ```python
+   # config.py 中修改
+   LSTM_CONFIG = {
+       'hidden_size': 512,      # 增大
+       'num_layers': 4,         # 增加层数
+       'dropout': 0.4,          # 增加dropout
+   }
+   ```
 
-16小时预测最难，可以尝试：
+2. **使用更激进的数据增强**：
+   - 滑动窗口重叠采样
+   - 添加高斯噪声
 
-1. **Seq2Seq架构**：使用编码器-解码器结构
-2. **多尺度特征**：同时使用不同时间窗口
-3. **增加输入长度**：从8小时扩展到24/48小时
-4. **集成学习**：组合多个模型的预测
+3. **尝试组合评估指标**：
+   ```bash
+   # 使用综合指标训练
+   python main.py --mode train --tasks multistep_16h --metric-mode combined
+   ```
 
-### 方案4：数据增强
+---
 
-```python
-# 可以尝试的数据增强
-- 滑动窗口重叠采样
-- 添加噪声增强
-- 时间序列分解（趋势+季节+残差）
+## 📈 评估指标选择策略说明
+
+### 为什么不同任务使用不同指标？
+
+| 指标 | 适用场景 | 优点 | 缺点 |
+|------|---------|------|------|
+| **MSE** | 短期预测 | 直接惩罚大误差 | 受数据尺度影响 |
+| **R²** | 长期预测 | 归一化，可比较 | 对异常值敏感 |
+| **Combined** | 微调阶段 | 平衡两者优点 | 需要调参 |
+
+### 数学关系
+```
+R² = 1 - MSE / Var(y)
+```
+在相同数据集上，最小化MSE和最大化R²是等价的。区别在于：
+- MSE的`min_delta`依赖数据尺度
+- R²的`min_delta`是归一化的（0.001表示0.1%的改进）
+
+### 默认策略
+- `multistep_16h`：`mode='r2'`（长期预测误差会累积，R²更稳定）
+- 其他任务：`mode='mse'`（短期预测直接优化误差）
+
+---
+
+## 📁 项目结构
+
+```
+/workspace
+├── config.py           # 配置文件
+├── data_loader.py      # 数据加载与预处理
+├── main.py             # 主程序入口
+├── models.py           # 基础模型
+├── models_innovative.py # 创新模型
+├── trainer.py          # 训练器（已优化）
+├── visualization.py    # 可视化（已优化）
+├── test_quick.py       # 快速测试脚本
+├── dataset/            # 数据集
+├── models/             # 保存的模型（21个.pth文件）
+├── results/            # 可视化结果（在.gitignore中）
+│   └── history_archive/ # 历史归档（新增）
+└── logs/               # 训练日志（新增）
 ```
 
 ---
 
-## ☁️ 云服务器训练指南
+## ⚠️ 注意事项
 
-### 部署步骤
-
-1. **上传代码到云服务器**
-```bash
-# 方式1：Git clone
-git clone https://github.com/EthanLyu30/Wind-direction-time-series-forecasting.git
-cd Wind-direction-time-series-forecasting
-
-# 方式2：SCP上传
-scp -r ./* user@server:/path/to/project
-```
-
-2. **设置环境**
-```bash
-conda create -n wind_pred python=3.10
-conda activate wind_pred
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install pandas pyarrow scikit-learn seaborn tqdm tabulate
-```
-
-3. **上传数据集**
-```bash
-# 上传dataset文件夹到服务器相同路径
-scp -r dataset/ user@server:/path/to/project/
-```
-
-4. **开始训练**
-```bash
-# 后台运行，防止SSH断开
-nohup python train_gpu.py --epochs 200 --patience 30 > train.log 2>&1 &
-
-# 查看训练日志
-tail -f train.log
-```
-
-### 训练时间估算
-
-| 硬件 | 单个模型训练 | 全部实验 |
-|------|-------------|----------|
-| CPU (i7) | ~10分钟 | ~4小时 |
-| RTX 3060 | ~2分钟 | ~40分钟 |
-| V100/A100 | ~30秒 | ~15分钟 |
+1. **重新训练建议**：任务配置修改后，`multistep_16h` 模型需要重新训练
+2. **results目录**：在 `.gitignore` 中，不会被提交到Git
+3. **训练日志**：保存在 `logs/` 目录，使用JSONL格式（每行一个JSON对象）
+4. **模型兼容性**：旧版本模型可能缺少 `metric_mode` 和 `best_score` 字段
 
 ---
 
-## 📈 迭代建议优先级
+## 📝 使用示例
 
-1. ⭐⭐⭐ **先在GPU上跑完整训练**（200 epochs），看看能否提升
-2. ⭐⭐⭐ **增加输入序列长度**：8h → 24h
-3. ⭐⭐ **调整学习率**：尝试 0.0005 和 0.0001
-4. ⭐⭐ **增加模型容量**：hidden_size 256
-5. ⭐ **尝试集成模型**：组合LSTM + Transformer + Attention_LSTM
+### 完整训练
+```bash
+python main.py --mode train --epochs 150
+```
 
----
+### 继续微调
+```bash
+python main.py --mode train --resume --epochs 300 --lr 0.0005
+```
 
-## 总结
+### 仅训练特定模型和任务
+```bash
+python main.py --mode train --models LSTM Transformer --tasks multistep_16h --epochs 200
+```
 
-- **当前效果**：短期预测良好（R²≈0.88），长期预测有提升空间（R²≈0.52）
-- **是否继续迭代**：是的，尤其是16h预测还有很大提升空间
-- **下一步**：在GPU服务器上运行 `train_gpu.py` 进行更充分的训练
+### 禁用可视化（服务器推荐）
+```bash
+python main.py --mode train --no-viz
+```
