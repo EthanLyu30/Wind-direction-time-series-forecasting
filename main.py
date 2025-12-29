@@ -583,7 +583,7 @@ if __name__ == "__main__":
     parser.add_argument('--models', type=str, nargs='+', default=None,
                        help='指定要训练的模型，如: --models LSTM Transformer')
     parser.add_argument('--tasks', type=str, nargs='+', default=None,
-                       help='指定要运行的任务，如: --tasks singlestep multistep_1h')
+                       help='指定要运行的任务，如: --tasks singlestep multistep_16h')
     parser.add_argument('--no-viz', action='store_true',
                        help='禁用可视化图表生成（服务器训练推荐）')
     parser.add_argument('--batch-size', type=int, default=None,
