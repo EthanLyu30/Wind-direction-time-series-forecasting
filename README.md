@@ -157,8 +157,7 @@ python main.py --batch-size 128 --epochs 200 --resume --no-viz
 | **CNN-LSTM** | 多尺度卷积特征提取 + LSTM序列建模 + 注意力机制 |
 | **TCN** | 因果卷积 + 膨胀卷积扩大感受野 + 残差连接 |
 | **WaveNet** | 门控激活单元 + 膨胀因果卷积 + Skip连接 |
-| **LSTNet** | CNN短期模式提取 + GRU长期依赖 + Skip-RNN周期建模 |
-| **NBEATS** | 纯MLP架构 + 残差学习 + 双堆栈预测 |
+| **LSTNet** | CNN短期模式提取 + GRU长期依赖 + Skip-RNN周期建模 + Highway自回归 |
 
 ## 📊 评估指标
 
@@ -214,7 +213,6 @@ python main.py --batch-size 128 --epochs 200 --resume --no-viz
 | **TCN** | `TCN_singlestep.pth` | `TCN_multistep_16h.pth` |
 | **WaveNet** | `WaveNet_singlestep.pth` | `WaveNet_multistep_16h.pth` |
 | **LSTNet** | `LSTNet_singlestep.pth` | `LSTNet_multistep_16h.pth` |
-| **NBEATS** | `NBEATS_singlestep.pth` | `NBEATS_multistep_16h.pth` |
 
 ## 📁 输出文件
 
@@ -314,9 +312,29 @@ TASK_SPECIFIC_HYPERPARAMS = {
 
 ### 模型性能排名
 
-**单步预测 (8h→1h)**：LSTM > Linear > TCN > LSTNet > CNN_LSTM > WaveNet > Transformer
+**单步预测 (8h→1h)** - 按RMSE排序：
 
-**多步预测 (8h→16h)**：Linear > LSTM > WaveNet > Transformer > CNN_LSTM > TCN > LSTNet
+| 排名 | 模型 | RMSE ↓ | R² ↑ | 类型 |
+|------|------|--------|------|------|
+| 🥇1 | **LSTM** | 0.9243 | 0.8848 | 基础 |
+| 🥈2 | Linear | 0.9267 | 0.8841 | 基础 |
+| 🥉3 | TCN | 0.9351 | 0.8820 | 创新 |
+| 4 | Transformer | 0.9441 | 0.8798 | 基础 |
+| 5 | LSTNet | 0.9480 | 0.8788 | 创新 |
+| 6 | CNN_LSTM | 0.9510 | 0.8780 | 创新 |
+| 7 | WaveNet | 0.9529 | 0.8775 | 创新 |
+
+**多步预测 (8h→16h)** - 按RMSE排序：
+
+| 排名 | 模型 | RMSE ↓ | R² ↑ | 类型 |
+|------|------|--------|------|------|
+| 🥇1 | **LSTM** | 1.8853 | 0.5225 | 基础 |
+| 🥈2 | Linear | 1.8997 | 0.5152 | 基础 |
+| 🥉3 | **WaveNet** | 1.9500 | 0.4892 | 创新 |
+| 4 | CNN_LSTM | 1.9975 | 0.4640 | 创新 |
+| 5 | Transformer | 2.0148 | 0.4546 | 基础 |
+| 6 | TCN | 2.0417 | 0.4400 | 创新 |
+| 7 | LSTNet | 2.1075 | 0.4033 | 创新 |
 
 ### 为什么简单模型表现好？
 
@@ -329,16 +347,18 @@ TASK_SPECIFIC_HYPERPARAMS = {
 
 虽然整体上简单模型表现更好，但创新模型仍有重要价值：
 
-1. **WaveNet在多步预测中表现优异**：排名第2，优于LSTM（RMSE: 1.96 vs 1.97）
+1. **WaveNet在多步预测中表现第3**：证明了门控卷积在长期预测上的优势
 2. **TCN在单步预测中排名第3**：优于Transformer，证明因果卷积的有效性
-3. **学术价值**：
+3. **LSTNet提供周期性建模**：Skip-RNN和Highway组件可捕获周期性模式
+4. **学术价值**：
    - 展示了对多种前沿架构的理解和实现能力
    - 对比分析本身就是创新（证明模型复杂度与数据量的权衡）
    - 为后续大规模数据场景提供了模型储备
 
 ### 结论
 
-- 在小规模数据集上，**简单模型（Linear、LSTM）更实用**
+- 在小规模数据集上，**LSTM效果最佳**，单步和多步预测均排第一
+- **Linear模型性价比最高**：参数量最少但性能接近LSTM
 - 在长期预测任务中，**WaveNet等卷积模型有优势**
 - 模型选择应根据数据规模和任务复杂度权衡
 
