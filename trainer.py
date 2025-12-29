@@ -478,6 +478,11 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
             if os.path.exists(model_path):
                 old_checkpoint = torch.load(model_path, map_location=device, weights_only=False)
                 best_model_state = old_checkpoint['model_state_dict']
+                # ==================== 关键修复：把model对象也加载为历史最佳 ====================
+                # 这样返回给main.py的model才是历史最佳，test_model测试的才是真正的最佳模型
+                model.load_state_dict(best_model_state)
+                if verbose:
+                    print(f"🔄 已将模型对象恢复为历史最佳状态（用于后续测试）")
             else:
                 best_model_state = current_best_model_state
             history_improved = False
