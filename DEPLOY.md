@@ -85,15 +85,43 @@ python3 -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, Device: {to
 
 ---
 
-## RTX 3060 GPU服务器推荐配置
+## GPU服务器推荐配置
 
-RTX 3060有12GB显存，可以适当增加batch_size提升训练速度：
+### A100 40GB（高端GPU，推荐用于大规模训练）
 
-在 `config.py` 中修改：
-```python
-BATCH_SIZE = 128  # 从64增加到128（GPU显存充足时）
-NUM_EPOCHS = 100
+A100有40GB显存，支持混合精度训练(AMP)，训练速度极快：
+
+```bash
+# 推荐训练命令
+python3 main.py --batch-size 512 --epochs 1000 --resume --no-viz
+
+# 继续微调特定模型
+python3 main.py --models LSTM Transformer --batch-size 512 --epochs 800 --resume
 ```
+
+系统会自动检测A100并启用：
+- **Batch Size**: 512（自动设置）
+- **混合精度训练(AMP)**: 自动启用，加速2-3倍
+- **多线程数据加载**: 8个workers
+
+### RTX 3060 12GB
+
+RTX 3060有12GB显存，适合中等规模训练：
+
+```bash
+python3 main.py --batch-size 128 --epochs 200 --resume
+```
+
+### 训练参数说明
+
+| 参数 | 说明 | 推荐值(A100) | 推荐值(RTX 3060) |
+|------|------|-------------|------------------|
+| `--batch-size` | 批次大小 | 512 | 128 |
+| `--epochs` | 最大训练轮数 | 800-1000 | 200-400 |
+| `--lr` | 学习率 | 0.0005 | 0.0003 |
+| `--resume` | 从检查点继续训练 | 推荐使用 | 推荐使用 |
+| `--no-viz` | 禁用可视化 | 服务器推荐 | 服务器推荐 |
+| `--models` | 指定训练模型 | 可选 | 可选 |
 
 ---
 
@@ -111,11 +139,14 @@ scp -r username@server-ip:~/wind_speed_prediction/results/ ./results_from_server
 
 ## 训练时间估计
 
-| 设备 | 单个模型（单步预测） | 完整实验（21个模型） |
+| 设备 | 单个模型（单步预测） | 完整实验（14个模型） |
 |------|---------------------|---------------------|
-| CPU (Windows) | ~10-15分钟 | ~3-5小时 |
+| A100 40GB (AMP) | ~30秒-1分钟 | ~10-15分钟 |
 | RTX 3060 GPU | ~1-2分钟 | ~30-45分钟 |
+| CPU (Windows) | ~10-15分钟 | ~3-5小时 |
 | 云服务器 (CPU) | ~8-12分钟 | ~2-4小时 |
+
+> 注：启用混合精度训练(AMP)可加速2-3倍，A100会自动启用
 
 ---
 

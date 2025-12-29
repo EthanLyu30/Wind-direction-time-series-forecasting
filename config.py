@@ -89,14 +89,33 @@ DEVICE = get_device()
 # GPU可以使用更大的batch_size加速训练
 if torch.cuda.is_available():
     gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
-    if gpu_memory >= 10:  # RTX 3060 有12GB显存
+    gpu_name = torch.cuda.get_device_name(0).lower()
+    
+    # A100/H100等高端GPU的优化配置
+    if 'a100' in gpu_name or 'h100' in gpu_name or gpu_memory >= 35:
+        BATCH_SIZE = 512       # A100 40G可以使用很大的batch
+        USE_AMP = True         # 启用混合精度训练
+        NUM_WORKERS = 8        # 更多数据加载线程
+    elif gpu_memory >= 20:     # RTX 3090/4090等
+        BATCH_SIZE = 256
+        USE_AMP = True
+        NUM_WORKERS = 4
+    elif gpu_memory >= 10:     # RTX 3060 12GB等
         BATCH_SIZE = 128
+        USE_AMP = True
+        NUM_WORKERS = 4
     elif gpu_memory >= 6:
         BATCH_SIZE = 64
+        USE_AMP = False
+        NUM_WORKERS = 2
     else:
         BATCH_SIZE = 32
+        USE_AMP = False
+        NUM_WORKERS = 2
 else:
     BATCH_SIZE = 64  # CPU默认
+    USE_AMP = False
+    NUM_WORKERS = 0
 
 LEARNING_RATE = 0.001
 NUM_EPOCHS = 100
@@ -127,7 +146,8 @@ def get_adjusted_lr(base_lr, batch_size):
     reference_batch = 128
     return base_lr * (batch_size / reference_batch)
 
-print(f"⚙️  Batch Size: {BATCH_SIZE}")
+# 注意：实际batch_size可能被命令行参数覆盖，这里只是默认值
+# print(f"⚙️  默认 Batch Size: {BATCH_SIZE}")  # 移到main.py中打印实际使用的值
 
 # ==================== 模型配置 ====================
 # Linear模型配置
@@ -194,6 +214,17 @@ WAVENET_CONFIG = {
 ENSEMBLE_CONFIG = {
     'models': ['Linear', 'LSTM', 'Transformer'],
     'weights': 'learned',  # 'equal', 'learned', 'stacking'
+}
+
+# LSTNet模型配置（轻量级，适合小数据集）
+LSTNET_CONFIG = {
+    'cnn_channels': 32,         # CNN通道数
+    'cnn_kernel': 3,            # CNN卷积核大小
+    'rnn_hidden': 64,           # GRU隐藏层大小
+    'skip_hidden': 32,          # Skip-GRU隐藏层大小
+    'skip': 4,                  # 跳跃步长（用于捕获周期性）
+    'highway_window': 4,        # 自回归窗口大小
+    'dropout': 0.2,             # dropout率
 }
 
 # ==================== 随机种子 ====================
