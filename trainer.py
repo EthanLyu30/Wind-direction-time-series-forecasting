@@ -488,6 +488,7 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         best_model_state = current_best_model_state
         best_r2 = history.get('best_r2', early_stopping.get_best_r2())
         history_improved = True
+        current_best_score = history.get('best_score', early_stopping.best_score)
     
     # 更新合并后的历史记录中的最佳信息
     merged_history['best_val_loss'] = best_val_loss
