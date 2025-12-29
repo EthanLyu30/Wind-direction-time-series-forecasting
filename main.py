@@ -44,8 +44,7 @@ warnings.filterwarnings('ignore')
 from config import (
     DEVICE, BATCH_SIZE, NUM_EPOCHS, MODELS_DIR, RESULTS_DIR, LOGS_DIR,
     SINGLE_STEP_INPUT_LEN, SINGLE_STEP_OUTPUT_LEN,
-    MULTI_STEP_1_INPUT_LEN, MULTI_STEP_1_OUTPUT_LEN,
-    MULTI_STEP_2_INPUT_LEN, MULTI_STEP_2_OUTPUT_LEN,
+    MULTI_STEP_INPUT_LEN, MULTI_STEP_OUTPUT_LEN,
     set_seed, RANDOM_SEED, LEARNING_RATE, EARLY_STOPPING_PATIENCE,
     TASK_SPECIFIC_HYPERPARAMS, get_adjusted_lr
 )
@@ -118,21 +117,18 @@ runtime_config = RuntimeConfig()
 
 
 # 定义任务配置
+# 单步预测：8小时 → 1小时
+# 多步预测：8小时 → 16小时
 TASKS = {
     'singlestep': {
         'input_len': SINGLE_STEP_INPUT_LEN,
         'output_len': SINGLE_STEP_OUTPUT_LEN,
         'description': f'单步预测（{SINGLE_STEP_INPUT_LEN}小时→{SINGLE_STEP_OUTPUT_LEN}小时）'
     },
-    'multistep_1h': {
-        'input_len': MULTI_STEP_1_INPUT_LEN,
-        'output_len': MULTI_STEP_1_OUTPUT_LEN,
-        'description': f'多步预测（{MULTI_STEP_1_INPUT_LEN}小时→{MULTI_STEP_1_OUTPUT_LEN}小时）'
-    },
-    'multistep_16h': {
-        'input_len': MULTI_STEP_2_INPUT_LEN,
-        'output_len': MULTI_STEP_2_OUTPUT_LEN,
-        'description': f'多步预测（{MULTI_STEP_2_INPUT_LEN}小时→{MULTI_STEP_2_OUTPUT_LEN}小时）'
+    'multistep': {
+        'input_len': MULTI_STEP_INPUT_LEN,
+        'output_len': MULTI_STEP_OUTPUT_LEN,
+        'description': f'多步预测（{MULTI_STEP_INPUT_LEN}小时→{MULTI_STEP_OUTPUT_LEN}小时）'
     }
 }
 
@@ -393,7 +389,7 @@ def evaluate_and_compare(all_results):
         print(f"✅ 已合并 {len(results_df)} 条模型结果")
     
     # 按Task和Model排序
-    task_order = ['singlestep', 'multistep_1h', 'multistep_16h']
+    task_order = ['singlestep', 'multistep']
     results_df['Task'] = pd.Categorical(results_df['Task'], categories=task_order, ordered=True)
     results_df = results_df.sort_values(['Task', 'Model']).reset_index(drop=True)
     
@@ -447,8 +443,7 @@ def generate_report(results_df, all_results):
         f.write("## 2. Task Configuration\n\n")
         task_descriptions = {
             'singlestep': 'Single-step Prediction (8h -> 1h)',
-            'multistep_1h': 'Multi-step Prediction (8h -> 1h)',
-            'multistep_16h': 'Multi-step Prediction (24h -> 16h)'
+            'multistep': 'Multi-step Prediction (8h -> 16h)'
         }
         for task_name, task_config in TASKS.items():
             desc = task_descriptions.get(task_name, task_config['description'])
@@ -463,7 +458,7 @@ def generate_report(results_df, all_results):
         f.write("## 4. Best Models\n\n")
         
         # 找出每个任务的最佳模型
-        for task in ['singlestep', 'multistep_1h', 'multistep_16h']:
+        for task in ['singlestep', 'multistep']:
             task_results = full_results_df[full_results_df['Task'] == task]
             if len(task_results) > 0:
                 best_idx = task_results['RMSE'].idxmin()

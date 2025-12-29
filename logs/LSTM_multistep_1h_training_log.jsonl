@@ -1,1 +1,0 @@
-{"timestamp": "2025-12-29T13:04:08.799052", "model_name": "LSTM", "task_name": "multistep_1h", "metric_mode": "mse", "learning_rate": 0.0005, "patience": 18, "start_epoch": 200, "end_epoch": 438, "best_epoch": 419, "best_r2": 0.877211332321167, "best_mse": 0.06744999438524246, "total_training_time": 68.56128025054932, "improved": true}

@@ -20,9 +20,10 @@
 - **数据大小**: 约257KB
 
 ### 任务目标
-1. **单步预测**: 使用8小时历史数据预测未来1小时风速
-2. **多步预测 (短期)**: 使用8小时历史数据预测未来1小时风速
-3. **多步预测 (长期)**: 使用8小时历史数据预测未来16小时风速
+| 任务类型 | 输入 | 输出 | 说明 |
+|----------|------|------|------|
+| **单步预测** | 8小时 | 1小时 | 短期风速预测 |
+| **多步预测** | 8小时 | 16小时 | 长期风速预测 |
 
 ## 🏗️ 项目结构
 
@@ -36,13 +37,20 @@ wind-speed-prediction/
 ├── visualization.py         # 可视化模块
 ├── main.py                  # 主程序入口
 ├── requirements.txt         # 依赖包列表
-├── .gitignore              # Git忽略文件配置
 ├── README.md               # 项目说明文档
 ├── dataset/                # 数据集目录
 │   ├── WindSpeed_10m/
 │   ├── WindSpeed_50m/
 │   └── WindSpeed_100m/
-├── models/                 # 保存的模型文件
+├── models/                 # 保存的模型文件（共14个）
+│   ├── Linear_singlestep.pth
+│   ├── Linear_multistep.pth
+│   ├── LSTM_singlestep.pth
+│   ├── LSTM_multistep.pth
+│   ├── Transformer_singlestep.pth
+│   ├── Transformer_multistep.pth
+│   └── ... (创新模型)
+├── logs/                   # 训练日志
 └── results/                # 实验结果与可视化
 ```
 
@@ -68,24 +76,33 @@ python main.py
 # 仅训练模型
 python main.py --mode train
 
-# 仅评估模型（需要已训练的模型）
-python main.py --mode eval
+# 禁用可视化（服务器推荐）
+python main.py --mode train --no-viz
 
-# 仅数据可视化
-python main.py --mode visualize
+# 从检查点继续训练（微调）
+python main.py --mode train --resume --epochs 200
+
+# 训练指定模型
+python main.py --mode train --models LSTM Transformer
+
+# 训练指定任务
+python main.py --mode train --tasks singlestep
+
+# 调整超参数
+python main.py --mode train --lr 0.0005 --batch-size 128 --epochs 150
 ```
 
 ## 🧠 模型介绍
 
-### 基础模型 (75%评分要求)
+### 基础模型（3个，满足作业要求）
 
-| 模型 | 描述 |
-|------|------|
-| **Linear** | 基于多层感知机(MLP)的线性模型，将输入序列展平后预测 |
-| **LSTM** | 双向长短期记忆网络，擅长捕获时序依赖关系 |
-| **Transformer** | 基于自注意力机制的编码器-解码器架构 |
+| 模型 | 描述 | 参数量 |
+|------|------|--------|
+| **Linear** | 基于多层感知机(MLP)的线性模型，将输入序列展平后预测 | ~30K |
+| **LSTM** | 双向长短期记忆网络，擅长捕获时序依赖关系 | ~500K |
+| **Transformer** | 基于自注意力机制的编码器-解码器架构 | ~800K |
 
-### 创新模型 (25%创新分)
+### 创新模型（4个，额外创新分）
 
 | 模型 | 创新点 |
 |------|--------|
@@ -126,25 +143,35 @@ python main.py --mode visualize
 
 ## 💾 模型保存
 
-训练完成的模型保存为 `.pth` 格式，命名规则：`{模型名}_{任务名}.pth`
+训练完成的模型保存为 `.pth` 格式，共 **14个模型文件**（7个模型 × 2个任务）。
 
-示例：
-- `Linear_singlestep.pth`
-- `LSTM_multistep_16h.pth`
-- `Transformer_multistep_1h.pth`
-- `CNN_LSTM_singlestep.pth`
-- ...
+命名规则：`{模型名}_{任务名}.pth`
+
+### 基础模型（6个，满足作业要求）
+| 模型 | 单步预测 | 多步预测 |
+|------|----------|----------|
+| Linear | `Linear_singlestep.pth` | `Linear_multistep.pth` |
+| LSTM | `LSTM_singlestep.pth` | `LSTM_multistep.pth` |
+| Transformer | `Transformer_singlestep.pth` | `Transformer_multistep.pth` |
+
+### 创新模型（8个）
+| 模型 | 单步预测 | 多步预测 |
+|------|----------|----------|
+| CNN_LSTM | `CNN_LSTM_singlestep.pth` | `CNN_LSTM_multistep.pth` |
+| Attention_LSTM | `Attention_LSTM_singlestep.pth` | `Attention_LSTM_multistep.pth` |
+| TCN | `TCN_singlestep.pth` | `TCN_multistep.pth` |
+| WaveNet | `WaveNet_singlestep.pth` | `WaveNet_multistep.pth` |
 
 ## 📁 输出文件
 
 实验完成后，将在 `results/` 目录生成以下文件：
 
-- `dataset_overview.png` - 数据集概览图
+- `model_comparison.csv` - 模型性能对比表
+- `experiment_report.md` - 实验报告
 - `{model}_{task}_history.png` - 训练历史曲线
 - `{model}_{task}_predictions.png` - 预测结果对比图
 - `{model}_{task}_scatter.png` - 预测散点图
-- `model_comparison.csv` - 模型性能对比表
-- `experiment_report.md` - 实验报告
+- `comparison_{metric}.png` - 模型对比图
 
 ## 🎯 创新点详细说明
 
@@ -189,19 +216,39 @@ python main.py --mode visualize
 主要超参数在 `config.py` 中配置：
 
 ```python
-BATCH_SIZE = 64
-LEARNING_RATE = 0.001
-NUM_EPOCHS = 100
-EARLY_STOPPING_PATIENCE = 15
+# 序列配置
+SINGLE_STEP_INPUT_LEN = 8    # 单步预测：8小时输入
+SINGLE_STEP_OUTPUT_LEN = 1   # 单步预测：1小时输出
+MULTI_STEP_INPUT_LEN = 8     # 多步预测：8小时输入
+MULTI_STEP_OUTPUT_LEN = 16   # 多步预测：16小时输出
+
+# 训练配置
+BATCH_SIZE = 64              # 批次大小
+LEARNING_RATE = 0.001        # 学习率
+NUM_EPOCHS = 100             # 最大训练轮数
+EARLY_STOPPING_PATIENCE = 15 # 早停耐心值
+
+# 数据集划分
+TRAIN_RATIO = 0.7            # 训练集比例
+VAL_RATIO = 0.2              # 验证集比例
+TEST_RATIO = 0.1             # 测试集比例
 ```
 
-## 🤝 贡献指南
+## 📊 实验结果
 
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
+### 单步预测 (8h → 1h)
+| 模型 | MSE | RMSE | MAE | R² |
+|------|-----|------|-----|-----|
+| LSTM | 0.84 | 0.92 | 0.69 | **0.887** |
+| Linear | 0.86 | 0.93 | 0.71 | 0.884 |
+| TCN | 0.87 | 0.94 | 0.70 | 0.882 |
+
+### 多步预测 (8h → 16h)
+| 模型 | MSE | RMSE | MAE | R² |
+|------|-----|------|-----|-----|
+| Linear | 3.73 | 1.93 | 1.54 | **0.499** |
+| WaveNet | 3.84 | 1.96 | 1.55 | 0.484 |
+| LSTM | 3.87 | 1.97 | 1.55 | 0.480 |
 
 ## 📄 License
 

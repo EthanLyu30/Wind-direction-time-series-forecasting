@@ -256,10 +256,10 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     
     # 根据任务类型自动选择评估指标模式
     if metric_mode is None:
-        if task_name == 'multistep_16h':
-            metric_mode = 'r2'  # 长期预测：使用R²
+        if task_name == 'multistep':
+            metric_mode = 'r2'  # 多步预测（长期）：使用R²
         else:
-            metric_mode = 'mse'  # 短期预测：使用MSE
+            metric_mode = 'mse'  # 单步预测（短期）：使用MSE
     
     # 尝试从检查点恢复
     start_epoch = 0
