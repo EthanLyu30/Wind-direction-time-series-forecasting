@@ -1,6 +1,6 @@
 """
 创新模型模块
-包含：CNN-LSTM混合模型、Attention-LSTM模型、TCN模型、集成模型
+包含：CNN-LSTM混合模型、TCN模型、WaveNet模型、N-BEATS模型、集成模型
 用于获得额外的25%创新分数
 """
 import torch
@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from config import CNN_LSTM_CONFIG, ATTENTION_LSTM_CONFIG, TCN_CONFIG, ENSEMBLE_CONFIG
+from config import CNN_LSTM_CONFIG, TCN_CONFIG, ENSEMBLE_CONFIG, NBEATS_CONFIG
 
 
 class CNNLSTMModel(nn.Module):
@@ -112,106 +112,6 @@ class CNNLSTMModel(nn.Module):
         attention_weights = self.attention(lstm_out)
         attention_weights = F.softmax(attention_weights, dim=1)
         context = torch.sum(attention_weights * lstm_out, dim=1)
-        
-        # 输出
-        output = self.fc(context)
-        output = output.view(batch_size, self.output_len, self.num_targets)
-        
-        return output
-
-
-class AttentionLSTMModel(nn.Module):
-    """
-    Attention-LSTM模型
-    
-    创新点：
-    1. 自注意力机制增强特征表示
-    2. 时序注意力聚焦关键时间点
-    3. 多头注意力并行处理
-    """
-    
-    def __init__(self, input_len, output_len, num_features, num_targets, config=ATTENTION_LSTM_CONFIG):
-        super(AttentionLSTMModel, self).__init__()
-        
-        self.input_len = input_len
-        self.output_len = output_len
-        self.num_features = num_features
-        self.num_targets = num_targets
-        
-        hidden_size = config['hidden_size']
-        num_layers = config['num_layers']
-        attention_heads = config['attention_heads']
-        dropout = config['dropout']
-        
-        # 输入投影
-        self.input_proj = nn.Linear(num_features, hidden_size)
-        
-        # 多头自注意力
-        self.self_attention = nn.MultiheadAttention(
-            embed_dim=hidden_size,
-            num_heads=attention_heads,
-            dropout=dropout,
-            batch_first=True
-        )
-        self.layer_norm1 = nn.LayerNorm(hidden_size)
-        
-        # LSTM层
-        self.lstm = nn.LSTM(
-            input_size=hidden_size,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout=dropout if num_layers > 1 else 0,
-            bidirectional=True
-        )
-        
-        # 时序注意力
-        self.temporal_attention = nn.Sequential(
-            nn.Linear(hidden_size * 2, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, 1)
-        )
-        
-        # 特征注意力
-        self.feature_attention = nn.Sequential(
-            nn.Linear(hidden_size * 2, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, 1)
-        )
-        
-        # 层归一化
-        self.layer_norm2 = nn.LayerNorm(hidden_size * 2)
-        
-        # 输出层
-        self.fc = nn.Sequential(
-            nn.Linear(hidden_size * 2, hidden_size),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_size, output_len * num_targets)
-        )
-    
-    def forward(self, x):
-        """
-        Args:
-            x: (batch_size, input_len, num_features)
-        """
-        batch_size = x.size(0)
-        
-        # 输入投影
-        x = self.input_proj(x)
-        
-        # 自注意力
-        attn_out, _ = self.self_attention(x, x, x)
-        x = self.layer_norm1(x + attn_out)
-        
-        # LSTM
-        lstm_out, _ = self.lstm(x)
-        lstm_out = self.layer_norm2(lstm_out)
-        
-        # 时序注意力
-        temporal_weights = self.temporal_attention(lstm_out)
-        temporal_weights = F.softmax(temporal_weights, dim=1)
-        context = torch.sum(temporal_weights * lstm_out, dim=1)
         
         # 输出
         output = self.fc(context)
@@ -537,6 +437,234 @@ class WaveNetModel(nn.Module):
         return output
 
 
+# ==================== N-BEATS 模型 ====================
+
+class NBEATSBlock(nn.Module):
+    """
+    N-BEATS 基础块
+    
+    每个块包含：
+    1. 多层全连接网络处理输入
+    2. 生成 backcast（对输入的重建）
+    3. 生成 forecast（对未来的预测）
+    """
+    
+    def __init__(self, input_size, output_size, hidden_size, num_layers, 
+                 theta_size, share_weights=False):
+        """
+        Args:
+            input_size: 输入序列长度 × 特征数
+            output_size: 输出序列长度 × 目标数
+            hidden_size: 隐藏层大小
+            num_layers: 全连接层数量
+            theta_size: theta参数向量大小（用于基函数展开）
+            share_weights: 是否在backcast和forecast间共享权重
+        """
+        super(NBEATSBlock, self).__init__()
+        
+        self.input_size = input_size
+        self.output_size = output_size
+        self.share_weights = share_weights
+        
+        # 构建全连接层堆叠
+        layers = []
+        for i in range(num_layers):
+            in_dim = input_size if i == 0 else hidden_size
+            layers.extend([
+                nn.Linear(in_dim, hidden_size),
+                nn.ReLU()
+            ])
+        self.fc_stack = nn.Sequential(*layers)
+        
+        # Backcast 分支（重建输入）
+        self.theta_b = nn.Linear(hidden_size, theta_size)
+        self.backcast_fc = nn.Linear(theta_size, input_size)
+        
+        # Forecast 分支（预测输出）
+        if share_weights:
+            self.theta_f = self.theta_b
+        else:
+            self.theta_f = nn.Linear(hidden_size, theta_size)
+        self.forecast_fc = nn.Linear(theta_size, output_size)
+    
+    def forward(self, x):
+        """
+        Args:
+            x: (batch_size, input_size)
+        
+        Returns:
+            backcast: (batch_size, input_size) - 对输入的重建
+            forecast: (batch_size, output_size) - 对未来的预测
+        """
+        # 通过全连接层堆叠
+        h = self.fc_stack(x)
+        
+        # Backcast 分支
+        theta_b = self.theta_b(h)
+        backcast = self.backcast_fc(theta_b)
+        
+        # Forecast 分支
+        theta_f = self.theta_f(h)
+        forecast = self.forecast_fc(theta_f)
+        
+        return backcast, forecast
+
+
+class NBEATSStack(nn.Module):
+    """
+    N-BEATS 堆栈
+    
+    多个 Block 的堆叠，使用残差连接
+    """
+    
+    def __init__(self, num_blocks, input_size, output_size, hidden_size, 
+                 num_layers, theta_size):
+        super(NBEATSStack, self).__init__()
+        
+        self.blocks = nn.ModuleList([
+            NBEATSBlock(input_size, output_size, hidden_size, num_layers, theta_size)
+            for _ in range(num_blocks)
+        ])
+    
+    def forward(self, x):
+        """
+        Args:
+            x: (batch_size, input_size)
+        
+        Returns:
+            forecast: (batch_size, output_size) - 累积预测
+        """
+        residual = x
+        forecast_sum = 0
+        
+        for block in self.blocks:
+            backcast, forecast = block(residual)
+            # 残差连接：从输入中减去 backcast
+            residual = residual - backcast
+            # 累加 forecast
+            forecast_sum = forecast_sum + forecast
+        
+        return forecast_sum
+
+
+class NBEATSModel(nn.Module):
+    """
+    N-BEATS (Neural Basis Expansion Analysis for Time Series)
+    
+    创新点：
+    1. 纯MLP架构，无需特征工程，简单高效
+    2. 残差学习：每个块预测一部分，残差传递给下一块
+    3. 可解释性：可分解为趋势和季节性成分
+    4. 双残差堆叠：同时输出 backcast 和 forecast
+    
+    参考论文：
+    Oreshkin et al. "N-BEATS: Neural basis expansion analysis for 
+    interpretable time series forecasting" (ICLR 2020)
+    """
+    
+    def __init__(self, input_len, output_len, num_features, num_targets, 
+                 config=None):
+        """
+        Args:
+            input_len: 输入序列长度
+            output_len: 输出序列长度
+            num_features: 输入特征数量
+            num_targets: 预测目标数量
+            config: 模型配置字典
+        """
+        super(NBEATSModel, self).__init__()
+        
+        if config is None:
+            config = NBEATS_CONFIG
+        
+        self.input_len = input_len
+        self.output_len = output_len
+        self.num_features = num_features
+        self.num_targets = num_targets
+        
+        # 配置参数
+        num_stacks = config.get('num_stacks', 2)
+        num_blocks = config.get('num_blocks', 3)
+        hidden_size = config.get('hidden_size', 256)
+        num_layers = config.get('num_layers', 4)
+        theta_size = config.get('theta_size', 32)
+        dropout = config.get('dropout', 0.1)
+        
+        # 计算展平后的输入/输出大小
+        self.input_size = input_len * num_features
+        self.output_size = output_len * num_targets
+        
+        # 输入投影（可选，用于降维或升维）
+        self.input_proj = nn.Sequential(
+            nn.Linear(self.input_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(dropout)
+        )
+        
+        # 构建多个堆栈
+        self.stacks = nn.ModuleList([
+            NBEATSStack(num_blocks, hidden_size, self.output_size, 
+                       hidden_size, num_layers, theta_size)
+            for _ in range(num_stacks)
+        ])
+        
+        # 堆栈间的残差投影
+        self.residual_proj = nn.Linear(hidden_size, hidden_size)
+        
+        # 最终输出层（可选的后处理）
+        self.output_layer = nn.Sequential(
+            nn.Linear(self.output_size, self.output_size),
+            nn.Dropout(dropout)
+        )
+        
+        # 初始化权重
+        self._init_weights()
+    
+    def _init_weights(self):
+        """权重初始化"""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+    
+    def forward(self, x):
+        """
+        前向传播
+        
+        Args:
+            x: (batch_size, input_len, num_features)
+        
+        Returns:
+            output: (batch_size, output_len, num_targets)
+        """
+        batch_size = x.size(0)
+        
+        # 展平输入
+        x_flat = x.view(batch_size, -1)
+        
+        # 输入投影
+        h = self.input_proj(x_flat)
+        
+        # 通过多个堆栈，累加 forecast
+        forecast_sum = 0
+        for i, stack in enumerate(self.stacks):
+            forecast = stack(h)
+            forecast_sum = forecast_sum + forecast
+            
+            # 残差投影到下一个堆栈
+            if i < len(self.stacks) - 1:
+                h = self.residual_proj(h)
+        
+        # 后处理
+        output = self.output_layer(forecast_sum)
+        
+        # 重塑为目标形状
+        output = output.view(batch_size, self.output_len, self.num_targets)
+        
+        return output
+
+
 def get_innovative_model(model_name, input_len, output_len, num_features, num_targets):
     """
     获取创新模型实例
@@ -553,10 +681,10 @@ def get_innovative_model(model_name, input_len, output_len, num_features, num_ta
     """
     models = {
         'CNN_LSTM': CNNLSTMModel,
-        'Attention_LSTM': AttentionLSTMModel,
         'TCN': TCNModel,
         'Ensemble': EnsembleModel,
         'WaveNet': WaveNetModel,
+        'NBEATS': NBEATSModel,
     }
     
     if model_name not in models:
@@ -577,7 +705,7 @@ if __name__ == "__main__":
     
     x = torch.randn(batch_size, input_len, num_features)
     
-    for model_name in ['CNN_LSTM', 'Attention_LSTM', 'TCN', 'Ensemble', 'WaveNet']:
+    for model_name in ['CNN_LSTM', 'TCN', 'WaveNet', 'NBEATS']:
         print(f"\n测试 {model_name} 模型:")
         model = get_innovative_model(model_name, input_len, output_len, num_features, num_targets)
         

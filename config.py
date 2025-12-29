@@ -164,12 +164,14 @@ CNN_LSTM_CONFIG = {
     'dropout': 0.3,                # 增加dropout防止过拟合（原0.2）
 }
 
-# Attention-LSTM模型配置
-ATTENTION_LSTM_CONFIG = {
-    'hidden_size': 96,             # 减少隐藏单元（原128）
-    'num_layers': 2,               # 保持2层（足够了）
-    'attention_heads': 4,          # 减少头数（原4，已合理）
-    'dropout': 0.3,                # 增加dropout（原0.2）
+# N-BEATS模型配置（纯MLP架构，简单高效）
+NBEATS_CONFIG = {
+    'num_stacks': 2,               # 堆栈数量
+    'num_blocks': 3,               # 每个堆栈的块数
+    'hidden_size': 256,            # 隐藏层大小
+    'num_layers': 4,               # 每个块的全连接层数
+    'theta_size': 32,              # theta参数向量大小
+    'dropout': 0.1,                # dropout率（MLP架构不需要太多正则化）
 }
 
 # TCN (Temporal Convolutional Network) 配置
