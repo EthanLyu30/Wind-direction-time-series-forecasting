@@ -158,56 +158,45 @@ LINEAR_CONFIG = {
 
 # LSTM模型配置
 LSTM_CONFIG = {
-    'hidden_size': 384,      # 进一步增大隐藏层以提升表达能力
-    'num_layers': 4,         # 增加层数以捕获更复杂的时序模式
-    'dropout': 0.25,         # 适度降低dropout，允许更多信息流通
+    'hidden_size': 256,      # 隐藏层大小
+    'num_layers': 3,         # 层数
+    'dropout': 0.3,          # dropout率
     'bidirectional': True,
 }
 
 # Transformer模型配置
 TRANSFORMER_CONFIG = {
-    'd_model': 192,            # 进一步增大模型维度
-    'nhead': 8,                # 保持注意力头数
-    'num_encoder_layers': 5,   # 增加编码器层数
-    'num_decoder_layers': 5,   # 增加解码器层数
-    'dim_feedforward': 768,    # 增大前馈层
-    'dropout': 0.15,           # 适度降低dropout
+    'd_model': 128,            # 模型维度
+    'nhead': 8,                # 注意力头数
+    'num_encoder_layers': 3,   # 编码器层数
+    'num_decoder_layers': 3,   # 解码器层数
+    'dim_feedforward': 512,    # 前馈层维度
+    'dropout': 0.2,            # dropout率
 }
 
 # ==================== 创新模型配置 ====================
 # CNN-LSTM混合模型配置
 CNN_LSTM_CONFIG = {
-    'cnn_channels': [48, 64],      # 增加通道数以提升特征提取能力
+    'cnn_channels': [32, 64],      # CNN通道数
     'kernel_size': 3,
-    'lstm_hidden_size': 96,        # 增大隐藏单元
-    'lstm_num_layers': 2,          # 保持层数
-    'dropout': 0.2,                # 适度降低dropout
-}
-
-# N-BEATS模型配置（纯MLP架构，简单高效）
-NBEATS_CONFIG = {
-    'num_stacks': 2,               # 堆栈数量
-    'num_blocks': 3,               # 每个堆栈的块数
-    'hidden_size': 256,            # 隐藏层大小
-    'num_layers': 4,               # 每个块的全连接层数
-    'theta_size': 32,              # theta参数向量大小
-    'dropout': 0.1,                # dropout率（MLP架构不需要太多正则化）
+    'lstm_hidden_size': 64,        # LSTM隐藏层大小
+    'lstm_num_layers': 2,          # LSTM层数
+    'dropout': 0.3,                # dropout率
 }
 
 # TCN (Temporal Convolutional Network) 配置
-# 优化版本：增加通道数和层数以提升性能
 TCN_CONFIG = {
-    'num_channels': [48, 64, 96],  # 增加通道数和层数
+    'num_channels': [32, 64, 64],  # 各层通道数
     'kernel_size': 3,
-    'dropout': 0.2,                # 适度降低dropout
+    'dropout': 0.3,                # dropout率
 }
 
 # WaveNet模型配置
 WAVENET_CONFIG = {
-    'num_channels': 96,            # 增加通道数以提升表达能力
-    'num_blocks': 10,              # 增加块数以扩大感受野
-    'kernel_size': 2,              # 保持卷积核（标准设置）
-    'dropout': 0.2,                # 适度降低dropout
+    'num_channels': 64,            # 通道数
+    'num_blocks': 8,               # 残差块数量
+    'kernel_size': 2,              # 卷积核大小
+    'dropout': 0.3,                # dropout率
 }
 
 # 集成模型配置
@@ -218,13 +207,13 @@ ENSEMBLE_CONFIG = {
 
 # LSTNet模型配置（轻量级，适合小数据集）
 LSTNET_CONFIG = {
-    'cnn_channels': 48,         # 增加CNN通道数
+    'cnn_channels': 32,         # CNN通道数
     'cnn_kernel': 3,            # CNN卷积核大小
-    'rnn_hidden': 96,           # 增大GRU隐藏层
-    'skip_hidden': 48,          # 增大Skip-GRU隐藏层
+    'rnn_hidden': 64,           # GRU隐藏层
+    'skip_hidden': 32,          # Skip-GRU隐藏层
     'skip': 4,                  # 跳跃步长（用于捕获周期性）
-    'highway_window': 6,        # 增大自回归窗口
-    'dropout': 0.15,            # 适度降低dropout
+    'highway_window': 4,        # 自回归窗口
+    'dropout': 0.2,             # dropout率
 }
 
 # ==================== 随机种子 ====================
