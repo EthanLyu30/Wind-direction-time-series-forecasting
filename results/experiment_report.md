@@ -1,13 +1,13 @@
 # Wind Speed Prediction Experiment Report
 
-Generated: 2025-12-29 16:42:30
+Generated: 2025-12-29 17:37:10
 
 ## 1. Experiment Configuration
 
 - Device: cuda
 - Batch Size: 512
-- Max Epochs: 1500
-- Learning Rate: 0.0001
+- Max Epochs: 500
+- Learning Rate: 5e-05
 - Random Seed: 42
 
 ## 2. Task Configuration
@@ -32,19 +32,19 @@ Generated: 2025-12-29 16:42:30
 | TCN         | singlestep    | 0.874418 | 0.935103 | 0.702591 | 0.882046 |
 | Transformer | singlestep    | 0.891391 | 0.944135 | 0.707706 | 0.879756 |
 | WaveNet     | singlestep    | 0.908046 | 0.952915 | 0.722007 | 0.877509 |
-| CNN_LSTM    | multistep_16h | 4.10591  | 2.02631  | 1.60491  | 0.448412 |
-| LSTM        | multistep_16h | 3.70354  | 1.92446  | 1.52456  | 0.502466 |
+| CNN_LSTM    | multistep_16h | 3.98992  | 1.99748  | 1.58276  | 0.463995 |
+| LSTM        | multistep_16h | 3.55428  | 1.88528  | 1.49368  | 0.522519 |
 | LSTNet      | multistep_16h | 4.44139  | 2.10746  | 1.6274   | 0.403345 |
 | Linear      | multistep_16h | 3.60898  | 1.89973  | 1.51013  | 0.51517  |
 | NBEATS      | multistep_16h | 4.78301  | 2.18701  | 1.70261  | 0.357451 |
-| TCN         | multistep_16h | 4.2551   | 2.06279  | 1.63876  | 0.428371 |
+| TCN         | multistep_16h | 4.16839  | 2.04166  | 1.63044  | 0.440019 |
 | Transformer | multistep_16h | 4.05958  | 2.01484  | 1.5991   | 0.454637 |
 | WaveNet     | multistep_16h | 3.80249  | 1.95     | 1.53455  | 0.489174 |
 
 ## 4. Best Models
 
 - **Single-step Prediction (8h -> 1h)**: LSTM (RMSE: 0.9243, R²: 0.8848)
-- **Multi-step Prediction (8h -> 16h)**: Linear (RMSE: 1.8997, R²: 0.5152)
+- **Multi-step Prediction (8h -> 16h)**: LSTM (RMSE: 1.8853, R²: 0.5225)
 
 ## 5. Innovation Points
 
