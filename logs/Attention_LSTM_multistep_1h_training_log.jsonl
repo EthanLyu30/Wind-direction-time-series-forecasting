@@ -1,1 +1,0 @@
-{"timestamp": "2025-12-29T13:06:58.892101", "model_name": "Attention_LSTM", "task_name": "multistep_1h", "metric_mode": "mse", "learning_rate": 0.0005, "patience": 18, "start_epoch": 200, "end_epoch": 442, "best_epoch": 182, "best_r2": 0, "best_mse": 0.07787596193306587, "total_training_time": 81.80261182785034, "improved": false}
