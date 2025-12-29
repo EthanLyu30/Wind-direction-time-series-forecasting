@@ -11,55 +11,62 @@
 | 多步预测（8h→16h） | ✅ 已实现 | `multistep_16h` 任务 |
 | 数据集划分 7:2:1 | ✅ 已实现 | 训练:验证:测试 = 70%:20%:10% |
 | 特征工程（缺失值/异常值） | ✅ 已实现 | 插值法 + IQR异常值处理 |
-| 对比至少3个模型 | ✅ 已实现 | 7个模型：Linear, LSTM, Transformer, CNN_LSTM, TCN, WaveNet, N-BEATS |
+| 对比至少3个模型 | ✅ 已实现 | 7个模型：Linear, LSTM, Transformer, CNN_LSTM, TCN, WaveNet, LSTNet |
 | MSE/RMSE/MAE/R² 评估 | ✅ 已实现 | 完整的指标计算 |
 | 可视化数据集及预测结果 | ✅ 已实现 | 多种可视化图表 |
 | 保存模型为pth格式 | ✅ 已实现 | 共14个模型（7模型×2任务） |
 
 ---
 
-## 📊 当前模型性能概览
+## 📊 当前模型性能概览（最新训练结果）
 
 ### 单步预测 (8h → 1h) 排名
 
-| 排名 | 模型 | RMSE ↓ | R² ↑ | 类型 |
-|------|------|--------|------|------|
-| 🥇1 | **LSTM** | 0.9155 | 0.8869 | 基础 |
-| 🥈2 | Linear | 0.9267 | 0.8841 | 基础 |
-| 🥉3 | **TCN** | 0.9351 | 0.8820 | 创新 |
-| 4 | CNN_LSTM | 0.9518 | 0.8778 | 创新 |
-| 5 | WaveNet | 0.9640 | 0.8747 | 创新 |
-| 6 | Transformer | 0.9698 | 0.8731 | 基础 |
-| 7 | **N-BEATS** | 待测试 | 待测试 | 创新⭐ |
+| 排名 | 模型 | RMSE ↓ | R² ↑ | MAE | 类型 |
+|------|------|--------|------|-----|------|
+| 🥇1 | **LSTM** | 0.9243 | 0.8848 | 0.6948 | 基础 |
+| 🥈2 | Linear | 0.9267 | 0.8841 | 0.7060 | 基础 |
+| 🥉3 | **TCN** | 0.9351 | 0.8820 | 0.7026 | 创新 |
+| 4 | Transformer | 0.9441 | 0.8798 | 0.7077 | 基础 |
+| 5 | **LSTNet** | 0.9480 | 0.8788 | 0.7225 | 创新 |
+| 6 | CNN_LSTM | 0.9510 | 0.8780 | 0.7227 | 创新 |
+| 7 | WaveNet | 0.9529 | 0.8775 | 0.7220 | 创新 |
 
 ### 多步预测 (8h → 16h) 排名
 
-| 排名 | 模型 | RMSE ↓ | R² ↑ | 类型 |
-|------|------|--------|------|------|
-| 🥇1 | Linear | 1.9309 | 0.4991 | 基础 |
-| 🥈2 | **WaveNet** | 1.9594 | 0.4842 | 创新 |
-| 🥉3 | LSTM | 1.9667 | 0.4804 | 基础 |
-| 4 | CNN_LSTM | 2.0147 | 0.4547 | 创新 |
-| 5 | TCN | 2.0638 | 0.4278 | 创新 |
-| 6 | Transformer | 2.1445 | 0.3822 | 基础 |
-| 7 | **N-BEATS** | 待测试 | 待测试 | 创新⭐ |
+| 排名 | 模型 | RMSE ↓ | R² ↑ | MAE | 类型 |
+|------|------|--------|------|-----|------|
+| 🥇1 | **LSTM** | 1.8853 | 0.5225 | 1.4937 | 基础 |
+| 🥈2 | Linear | 1.8997 | 0.5152 | 1.5101 | 基础 |
+| 🥉3 | **WaveNet** | 1.9500 | 0.4892 | 1.5346 | 创新 |
+| 4 | CNN_LSTM | 1.9975 | 0.4640 | 1.5828 | 创新 |
+| 5 | Transformer | 2.0148 | 0.4546 | 1.5991 | 基础 |
+| 6 | TCN | 2.0417 | 0.4400 | 1.6304 | 创新 |
+| 7 | LSTNet | 2.1075 | 0.4033 | 1.6274 | 创新 |
 
 ---
 
 ## 🔍 结果分析
 
-### 为什么简单模型效果更好？
+### 为什么LSTM模型效果最好？
+
+1. **双向LSTM结构**：能同时利用过去和未来的上下文信息
+2. **门控机制优秀**：擅长捕获时序数据中的长短期依赖
+3. **参数量适中**：相比Transformer更不容易过拟合
+4. **成熟稳定**：经过大量实践验证的时序建模能力
+
+### 为什么简单模型（Linear）效果也很好？
 
 1. **数据量有限**：约10,000条数据，复杂模型容易过拟合
-2. **特征关系简单**：风速与气象特征存在较强线性关系，Linear足以捕获
+2. **特征关系简单**：风速与气象特征存在较强线性关系
 3. **奥卡姆剃刀原理**：简单问题用简单模型效果往往更好
-4. **短期依赖主导**：8小时输入序列的时序依赖不复杂
+4. **短期依赖主导**：8小时输入序列的时序依赖相对简单
 
 ### 创新模型的价值
 
-1. **WaveNet在多步预测中表现优异**：排名第2，优于LSTM（RMSE: 1.96 vs 1.97）
+1. **WaveNet在多步预测中排名第3**：门控卷积在长期预测上有优势
 2. **TCN在单步预测中排名第3**：优于Transformer，证明因果卷积的有效性
-3. **N-BEATS**（新增）：纯MLP架构，参数量适中，预期在多步预测上有突破
+3. **LSTNet周期性建模**：Skip-RNN组件可捕获周期性模式
 4. **学术价值**：展示了对多种前沿架构的理解和实现能力
 
 ---
@@ -126,35 +133,21 @@ python main.py --mode train --resume --epochs 800 --lr 0.00005 --patience 60 \
 
 # 8. 只优化最有潜力的模型
 python main.py --mode train --resume --epochs 600 --lr 0.0001 --patience 40 \
-    --models LSTM WaveNet Linear NBEATS --no-viz
-```
-
-### 🆕 训练新的N-BEATS模型
-
-```bash
-# 9. 训练新添加的N-BEATS模型
-python main.py --mode train --epochs 200 --models NBEATS --no-viz
-
-# 10. N-BEATS深度训练（推荐）
-python main.py --mode train --epochs 400 --lr 0.0005 --patience 30 \
-    --models NBEATS --no-viz
+    --models LSTM WaveNet Linear LSTNet --no-viz
 ```
 
 ### 📊 推荐的微调流程
 
 ```bash
-# 第一步：训练新的N-BEATS模型
-python main.py --mode train --epochs 300 --models NBEATS --no-viz
-
-# 第二步：专门微调多步预测，增加训练轮数
+# 第一步：专门微调多步预测（通常是短板）
 python main.py --mode train --resume --epochs 400 --lr 0.0003 --patience 35 \
     --tasks multistep_16h --no-viz
 
-# 第三步：如果第二步有改进，继续深度训练
+# 第二步：如果第一步有改进，继续深度训练
 python main.py --mode train --resume --epochs 600 --lr 0.0001 --patience 50 \
     --tasks multistep_16h --metric-mode r2 --no-viz
 
-# 第四步：综合评估，生成可视化
+# 第三步：综合评估，生成可视化
 python main.py --mode all --epochs 100
 ```
 
@@ -187,7 +180,7 @@ python main.py --mode all --epochs 100
 | CNN_LSTM | `CNN_LSTM_singlestep.pth` | `CNN_LSTM_multistep_16h.pth` |
 | TCN | `TCN_singlestep.pth` | `TCN_multistep_16h.pth` |
 | WaveNet | `WaveNet_singlestep.pth` | `WaveNet_multistep_16h.pth` |
-| N-BEATS | `NBEATS_singlestep.pth` | `NBEATS_multistep_16h.pth` |
+| LSTNet | `LSTNet_singlestep.pth` | `LSTNet_multistep_16h.pth` |
 
 ---
 
@@ -196,21 +189,22 @@ python main.py --mode all --epochs 100
 1. **任务配置**：单步预测(8h→1h) + 多步预测(8h→16h)，共2个任务
 2. **模型数量**：7个模型 × 2个任务 = 14个模型文件
 3. **基础模型要求**：Linear、LSTM、Transformer（满足作业要求的3个模型对比）
-4. **创新模型加分**：CNN_LSTM、TCN、WaveNet、N-BEATS
+4. **创新模型加分**：CNN_LSTM、TCN、WaveNet、LSTNet
 
 ---
 
-## 🆕 N-BEATS 模型介绍
+## 🆕 LSTNet 模型介绍
 
-**N-BEATS** (Neural Basis Expansion Analysis for Time Series) 是2020年ICLR发表的纯MLP时间序列预测模型，具有以下特点：
+**LSTNet** (Long- and Short-term Time-series Network) 是SIGIR 2018发表的时间序列预测模型，具有以下特点：
 
 ### 创新点
-1. **纯MLP架构**：无需RNN/Transformer，训练速度快，不易过拟合
-2. **残差学习**：每个块预测一部分信号，残差传递给下一块
-3. **双向输出**：同时输出backcast（重建输入）和forecast（预测未来）
-4. **堆叠结构**：多个Stack堆叠，每个Stack包含多个Block
+1. **CNN层**：提取短期局部时序模式
+2. **GRU层**：捕获长期序列依赖关系
+3. **Skip-RNN**：直接建模周期性模式（如每日/每周周期）
+4. **Highway组件**：自回归分量增强预测稳定性
 
-### 预期效果
-- 在多步预测上预计超过当前最佳（Linear: R²=0.4991）
-- 参数量适中，适合当前数据量规模
-- 训练收敛快，适合快速迭代
+### 模型特点
+- 参数量适中（~150K），适合中小规模数据集
+- 多组件协同：CNN+GRU+Skip-RNN+Highway
+- 在本项目中单步预测排名第5，多步预测排名第7
+- 对周期性强的数据效果更好
