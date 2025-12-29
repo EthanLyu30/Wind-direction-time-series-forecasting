@@ -1,10 +1,10 @@
-# Wind Speed Prediction Experiment Report
+# 风速时间序列预测实验报告
 
 Generated: 2025-12-29 17:37:10
 
-## 1. Experiment Configuration
+## 1. 实验配置
 
-- Device: cuda
+- 设备: CUDA (NVIDIA A100-SXM4-40GB)
 - Batch Size: 512
 - Max Epochs: 500
 - Learning Rate: 5e-05
