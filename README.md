@@ -20,9 +20,8 @@
 - **数据大小**: 约257KB
 
 ### 任务目标
-1. **单步预测**: 使用8小时历史数据预测未来1小时风速
-2. **多步预测 (短期)**: 使用8小时历史数据预测未来1小时风速
-3. **多步预测 (长期)**: 使用8小时历史数据预测未来16小时风速
+1. **单步预测 (singlestep)**: 使用8小时历史数据预测未来1小时风速
+2. **多步预测 (multistep_16h)**: 使用8小时历史数据预测未来16小时风速
 
 ## 🏗️ 项目结构
 
@@ -128,12 +127,20 @@ python main.py --mode visualize
 
 训练完成的模型保存为 `.pth` 格式，命名规则：`{模型名}_{任务名}.pth`
 
-示例：
-- `Linear_singlestep.pth`
-- `LSTM_multistep_16h.pth`
-- `Transformer_multistep_1h.pth`
-- `CNN_LSTM_singlestep.pth`
-- ...
+### 基础模型（共6个，满足作业要求）
+| 模型 | 单步预测 | 多步预测 |
+|------|----------|----------|
+| **Linear** | `Linear_singlestep.pth` | `Linear_multistep_16h.pth` |
+| **LSTM** | `LSTM_singlestep.pth` | `LSTM_multistep_16h.pth` |
+| **Transformer** | `Transformer_singlestep.pth` | `Transformer_multistep_16h.pth` |
+
+### 创新模型（额外加分）
+| 模型 | 单步预测 | 多步预测 |
+|------|----------|----------|
+| **CNN_LSTM** | `CNN_LSTM_singlestep.pth` | `CNN_LSTM_multistep_16h.pth` |
+| **Attention_LSTM** | `Attention_LSTM_singlestep.pth` | `Attention_LSTM_multistep_16h.pth` |
+| **TCN** | `TCN_singlestep.pth` | `TCN_multistep_16h.pth` |
+| **WaveNet** | `WaveNet_singlestep.pth` | `WaveNet_multistep_16h.pth` |
 
 ## 📁 输出文件
 

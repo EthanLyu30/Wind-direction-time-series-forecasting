@@ -69,17 +69,13 @@ TIMESTAMP_COL = 'Date & Time Stamp'
 HEIGHT_COL = 'height'
 
 # ==================== 序列配置 ====================
-# 单步预测配置
+# 单步预测配置：8小时历史数据 → 预测1小时
 SINGLE_STEP_INPUT_LEN = 8   # 输入序列长度（8小时）
 SINGLE_STEP_OUTPUT_LEN = 1  # 输出序列长度（1小时）
 
-# 多步预测配置 - 任务1：8小时预测1小时
-MULTI_STEP_1_INPUT_LEN = 8
-MULTI_STEP_1_OUTPUT_LEN = 1
-
-# 多步预测配置 - 任务2：8小时预测16小时（符合作业要求）
-MULTI_STEP_2_INPUT_LEN = 8   # 作业要求：8小时
-MULTI_STEP_2_OUTPUT_LEN = 16
+# 多步预测配置：8小时历史数据 → 预测16小时
+MULTI_STEP_INPUT_LEN = 8    # 输入序列长度（8小时）
+MULTI_STEP_OUTPUT_LEN = 16  # 输出序列长度（16小时）
 
 # ==================== 数据集划分配置 ====================
 TRAIN_RATIO = 0.7
@@ -114,11 +110,6 @@ TASK_SPECIFIC_HYPERPARAMS = {
         'lr': 0.001,          # 短期预测：正常学习率
         'patience': 15,       # 标准早停
         'min_epochs': 50,     # 至少训练50个epoch
-    },
-    'multistep_1h': {
-        'lr': 0.0008,         # 多步1h：略降学习率
-        'patience': 18,       # 略宽松
-        'min_epochs': 60,
     },
     'multistep_16h': {
         'lr': 0.0003,         # 长期预测：显著降低学习率（关键！）
