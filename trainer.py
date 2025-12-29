@@ -232,7 +232,7 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         train_loader: 训练数据加载器
         val_loader: 验证数据加载器
         model_name: 模型名称
-        task_name: 任务名称 ('singlestep', 'multistep_1h', 'multistep_16h')
+        task_name: 任务名称 ('singlestep', 'multistep_16h')
         num_epochs: 训练轮数
         learning_rate: 学习率（新参数名）
         patience: 早停耐心值
