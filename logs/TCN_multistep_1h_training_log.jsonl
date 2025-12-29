@@ -1,0 +1,1 @@
+{"timestamp": "2025-12-29T13:07:17.670973", "model_name": "TCN", "task_name": "multistep_1h", "metric_mode": "mse", "learning_rate": 0.0005, "patience": 18, "start_epoch": 200, "end_epoch": 440, "best_epoch": 420, "best_r2": 0.8725295662879944, "best_mse": 0.07002174854278564, "total_training_time": 2809.5127561092377, "improved": true}

@@ -42,12 +42,12 @@ env/
 # models/*.pth
 
 # Logs
-logs/
-*.log
+#logs/
+#*.log
 
 # OS
 .DS_Store
 Thumbs.db
 
 # Results (optional, can be regenerated)
-results/
+#results/

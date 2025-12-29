@@ -1,0 +1,1 @@
+{"timestamp": "2025-12-29T13:03:42.308137", "model_name": "Transformer", "task_name": "singlestep", "metric_mode": "mse", "learning_rate": 0.0005, "patience": 15, "start_epoch": 138, "end_epoch": 310, "best_epoch": 20, "best_r2": 0, "best_mse": 0.07243623190066394, "total_training_time": 250.56262278556824, "improved": false}

@@ -1,0 +1,1 @@
+{"timestamp": "2025-12-29T13:02:45.476042", "model_name": "Linear", "task_name": "singlestep", "metric_mode": "mse", "learning_rate": 0.0005, "patience": 15, "start_epoch": 182, "end_epoch": 398, "best_epoch": 46, "best_r2": 0, "best_mse": 0.07111106812953949, "total_training_time": 37.10160684585571, "improved": false}

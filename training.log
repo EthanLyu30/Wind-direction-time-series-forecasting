@@ -1,0 +1,534 @@
+📍 运行平台: Linux
+🚀 检测到GPU: NVIDIA A100-SXM4-40GB (39.4GB)
+⚙️  Batch Size: 128
+📝 使用字体: Droid Sans Fallback
+⚙️  训练轮数已覆盖为: 150
+📊 可视化已禁用（仅保存数据，不生成图表）
+📋 仅训练指定任务: multistep_16h
+======================================================================
+风速序列预测实验
+======================================================================
+设备: cuda
+随机种子: 42
+批次大小: 128
+最大训练轮数: 150
+学习率: 0.001
+可视化: 禁用
+======================================================================
+
+======================================================================
+步骤1: 数据加载与预处理
+======================================================================
+加载 10m 高度数据 (height=10)...
+  - 数据形状: (10573, 11)
+  - height列值: [10]
+加载 50m 高度数据 (height=50)...
+  - 数据形状: (10573, 12)
+  - height列值: [50]
+加载 100m 高度数据 (height=100)...
+  - 数据形状: (10573, 12)
+  - height列值: [100]
+
+合并后数据形状: (31719, 12)
+合并后height值: [ 10  50 100]
+==================================================
+数据预处理开始
+==================================================
+
+1. 解析时间戳...
+
+2. 处理缺失值...
+
+缺失值统计:
+Speed Avg 10m    10573
+dtype: int64
+
+3. 处理异常值...
+
+异常值统计:
+  SpeedAvg: 25 个异常值
+  SpeedMax: 9 个异常值
+  DirectionAvg: 318 个异常值
+  Speed Avg 10m: 14 个异常值
+
+4. 按高度透视数据...
+  透视后数据形状: (10573, 16)
+
+5. 添加时间特征...
+
+6. 最终数据清洗...
+
+最终数据形状: (10573, 26)
+==================================================
+数据预处理完成
+==================================================
+
+数据信息已保存至: /root/Wind-direction-time-series-forecasting/results/data_info.json
+
+======================================================================
+步骤3: 训练基础模型
+======================================================================
+
+==================================================
+任务: 多步预测（8小时→16小时）
+==================================================
+
+特征数量: 21
+目标数量: 3
+
+数据集划分:
+  训练集: 7401 样本
+  验证集: 2114 样本
+  测试集: 1058 样本
+
+--- 训练 Linear ---
+模型参数量: 34,000
+📊 使用超参: lr=0.000300, patience=25, epochs=150, metric=r2
+
+============================================================
+训练 Linear - multistep_16h
+============================================================
+设备: cuda
+学习率: 0.0003
+评估模式: R²(越大越好)
+训练轮数: 150
+早停耐心值: 25
+Training Linear:   0%|          | 0/150 [00:00<?, ?it/s]Training Linear:   0%|          | 0/150 [00:01<?, ?it/s, train_loss=0.9811, val_loss=0.6658, val_rmse=0.8082, lr=0.000300]Training Linear:   1%|          | 1/150 [00:01<03:06,  1.25s/it, train_loss=0.9811, val_loss=0.6658, val_rmse=0.8082, lr=0.000300]Training Linear:   1%|          | 1/150 [00:01<03:06,  1.25s/it, train_loss=0.6491, val_loss=0.4693, val_rmse=0.6737, lr=0.000293]Training Linear:   1%|▏         | 2/150 [00:01<01:47,  1.37it/s, train_loss=0.6491, val_loss=0.4693, val_rmse=0.6737, lr=0.000293]Training Linear:   1%|▏         | 2/150 [00:01<01:47,  1.37it/s, train_loss=0.4761, val_loss=0.4147, val_rmse=0.6316, lr=0.000272]Training Linear:   2%|▏         | 3/150 [00:01<01:19,  1.84it/s, train_loss=0.4761, val_loss=0.4147, val_rmse=0.6316, lr=0.000272]Training Linear:   2%|▏         | 3/150 [00:02<01:19,  1.84it/s, train_loss=0.4093, val_loss=0.3723, val_rmse=0.6001, lr=0.000239]Training Linear:   3%|▎         | 4/150 [00:02<01:06,  2.20it/s, train_loss=0.4093, val_loss=0.3723, val_rmse=0.6001, lr=0.000239]Training Linear:   3%|▎         | 4/150 [00:02<01:06,  2.20it/s, train_loss=0.3794, val_loss=0.3633, val_rmse=0.5934, lr=0.000197]Training Linear:   3%|▎         | 5/150 [00:02<01:00,  2.42it/s, train_loss=0.3794, val_loss=0.3633, val_rmse=0.5934, lr=0.000197]Training Linear:   3%|▎         | 5/150 [00:02<01:00,  2.42it/s, train_loss=0.3608, val_loss=0.3779, val_rmse=0.6023, lr=0.000151]Training Linear:   4%|▍         | 6/150 [00:02<00:54,  2.63it/s, train_loss=0.3608, val_loss=0.3779, val_rmse=0.6023, lr=0.000151]Training Linear:   4%|▍         | 6/150 [00:03<00:54,  2.63it/s, train_loss=0.3497, val_loss=0.3959, val_rmse=0.6168, lr=0.000106]Training Linear:   5%|▍         | 7/150 [00:03<00:53,  2.69it/s, train_loss=0.3497, val_loss=0.3959, val_rmse=0.6168, lr=0.000106]Training Linear:   5%|▍         | 7/150 [00:03<00:53,  2.69it/s, train_loss=0.3374, val_loss=0.3801, val_rmse=0.6036, lr=0.000064]Training Linear:   5%|▌         | 8/150 [00:03<00:50,  2.84it/s, train_loss=0.3374, val_loss=0.3801, val_rmse=0.6036, lr=0.000064]Training Linear:   5%|▌         | 8/150 [00:03<00:50,  2.84it/s, train_loss=0.3374, val_loss=0.3844, val_rmse=0.6075, lr=0.000031]Training Linear:   6%|▌         | 9/150 [00:03<00:47,  2.95it/s, train_loss=0.3374, val_loss=0.3844, val_rmse=0.6075, lr=0.000031]Training Linear:   6%|▌         | 9/150 [00:04<00:47,  2.95it/s, train_loss=0.3331, val_loss=0.3738, val_rmse=0.5996, lr=0.000010]Training Linear:   7%|▋         | 10/150 [00:04<00:46,  3.03it/s, train_loss=0.3331, val_loss=0.3738, val_rmse=0.5996, lr=0.000010]Training Linear:   7%|▋         | 10/150 [00:04<00:46,  3.03it/s, train_loss=0.3350, val_loss=0.3779, val_rmse=0.6023, lr=0.000300]Training Linear:   7%|▋         | 11/150 [00:04<00:45,  3.08it/s, train_loss=0.3350, val_loss=0.3779, val_rmse=0.6023, lr=0.000300]Training Linear:   7%|▋         | 11/150 [00:04<00:45,  3.08it/s, train_loss=0.3332, val_loss=0.3984, val_rmse=0.6169, lr=0.000298]Training Linear:   8%|▊         | 12/150 [00:04<00:45,  3.04it/s, train_loss=0.3332, val_loss=0.3984, val_rmse=0.6169, lr=0.000298]Training Linear:   8%|▊         | 12/150 [00:05<00:45,  3.04it/s, train_loss=0.3239, val_loss=0.3924, val_rmse=0.6134, lr=0.000293]Training Linear:   9%|▊         | 13/150 [00:05<00:44,  3.10it/s, train_loss=0.3239, val_loss=0.3924, val_rmse=0.6134, lr=0.000293]Training Linear:   9%|▊         | 13/150 [00:05<00:44,  3.10it/s, train_loss=0.3206, val_loss=0.3847, val_rmse=0.6079, lr=0.000142]Training Linear:   9%|▉         | 14/150 [00:05<00:43,  3.15it/s, train_loss=0.3206, val_loss=0.3847, val_rmse=0.6079, lr=0.000142]Training Linear:   9%|▉         | 14/150 [00:05<00:43,  3.15it/s, train_loss=0.3100, val_loss=0.4166, val_rmse=0.6311, lr=0.000272]Training Linear:  10%|█         | 15/150 [00:05<00:43,  3.14it/s, train_loss=0.3100, val_loss=0.4166, val_rmse=0.6311, lr=0.000272]Training Linear:  10%|█         | 15/150 [00:06<00:43,  3.14it/s, train_loss=0.3105, val_loss=0.4092, val_rmse=0.6268, lr=0.000257]Training Linear:  11%|█         | 16/150 [00:06<00:42,  3.15it/s, train_loss=0.3105, val_loss=0.4092, val_rmse=0.6268, lr=0.000257]Training Linear:  11%|█         | 16/150 [00:06<00:42,  3.15it/s, train_loss=0.3024, val_loss=0.4215, val_rmse=0.6356, lr=0.000239]Training Linear:  11%|█▏        | 17/150 [00:06<00:41,  3.18it/s, train_loss=0.3024, val_loss=0.4215, val_rmse=0.6356, lr=0.000239]Training Linear:  11%|█▏        | 17/150 [00:06<00:41,  3.18it/s, train_loss=0.3054, val_loss=0.4146, val_rmse=0.6296, lr=0.000219]Training Linear:  12%|█▏        | 18/150 [00:06<00:42,  3.14it/s, train_loss=0.3054, val_loss=0.4146, val_rmse=0.6296, lr=0.000219]Training Linear:  12%|█▏        | 18/150 [00:07<00:42,  3.14it/s, train_loss=0.2959, val_loss=0.4377, val_rmse=0.6467, lr=0.000197]Training Linear:  13%|█▎        | 19/150 [00:07<00:41,  3.17it/s, train_loss=0.2959, val_loss=0.4377, val_rmse=0.6467, lr=0.000197]Training Linear:  13%|█▎        | 19/150 [00:07<00:41,  3.17it/s, train_loss=0.2917, val_loss=0.4429, val_rmse=0.6510, lr=0.000175]Training Linear:  13%|█▎        | 20/150 [00:07<00:40,  3.18it/s, train_loss=0.2917, val_loss=0.4429, val_rmse=0.6510, lr=0.000175]Training Linear:  13%|█▎        | 20/150 [00:07<00:40,  3.18it/s, train_loss=0.2869, val_loss=0.4291, val_rmse=0.6399, lr=0.000151]Training Linear:  14%|█▍        | 21/150 [00:07<00:40,  3.19it/s, train_loss=0.2869, val_loss=0.4291, val_rmse=0.6399, lr=0.000151]Training Linear:  14%|█▍        | 21/150 [00:07<00:40,  3.19it/s, train_loss=0.2828, val_loss=0.4311, val_rmse=0.6403, lr=0.000128]Training Linear:  15%|█▍        | 22/150 [00:07<00:40,  3.16it/s, train_loss=0.2828, val_loss=0.4311, val_rmse=0.6403, lr=0.000128]Training Linear:  15%|█▍        | 22/150 [00:08<00:40,  3.16it/s, train_loss=0.2848, val_loss=0.4180, val_rmse=0.6336, lr=0.000053]Training Linear:  15%|█▌        | 23/150 [00:08<00:39,  3.19it/s, train_loss=0.2848, val_loss=0.4180, val_rmse=0.6336, lr=0.000053]Training Linear:  15%|█▌        | 23/150 [00:08<00:39,  3.19it/s, train_loss=0.2824, val_loss=0.4311, val_rmse=0.6421, lr=0.000084]Training Linear:  16%|█▌        | 24/150 [00:08<00:40,  3.10it/s, train_loss=0.2824, val_loss=0.4311, val_rmse=0.6421, lr=0.000084]Training Linear:  16%|█▌        | 24/150 [00:08<00:40,  3.10it/s, train_loss=0.2810, val_loss=0.4282, val_rmse=0.6403, lr=0.000064]Training Linear:  17%|█▋        | 25/150 [00:08<00:40,  3.06it/s, train_loss=0.2810, val_loss=0.4282, val_rmse=0.6403, lr=0.000064]Training Linear:  17%|█▋        | 25/150 [00:09<00:40,  3.06it/s, train_loss=0.2781, val_loss=0.4181, val_rmse=0.6327, lr=0.000046]Training Linear:  17%|█▋        | 26/150 [00:09<00:39,  3.10it/s, train_loss=0.2781, val_loss=0.4181, val_rmse=0.6327, lr=0.000046]Training Linear:  17%|█▋        | 26/150 [00:09<00:39,  3.10it/s, train_loss=0.2745, val_loss=0.4252, val_rmse=0.6374, lr=0.000031]Training Linear:  18%|█▊        | 27/150 [00:09<00:38,  3.16it/s, train_loss=0.2745, val_loss=0.4252, val_rmse=0.6374, lr=0.000031]Training Linear:  18%|█▊        | 27/150 [00:09<00:38,  3.16it/s, train_loss=0.2781, val_loss=0.4212, val_rmse=0.6349, lr=0.000019]Training Linear:  19%|█▊        | 28/150 [00:09<00:38,  3.17it/s, train_loss=0.2781, val_loss=0.4212, val_rmse=0.6349, lr=0.000019]Training Linear:  19%|█▊        | 28/150 [00:10<00:38,  3.17it/s, train_loss=0.2723, val_loss=0.4376, val_rmse=0.6474, lr=0.000010]Training Linear:  19%|█▉        | 29/150 [00:10<00:37,  3.19it/s, train_loss=0.2723, val_loss=0.4376, val_rmse=0.6474, lr=0.000010]Training Linear:  19%|█▉        | 29/150 [00:10<00:37,  3.19it/s, train_loss=0.2750, val_loss=0.4390, val_rmse=0.6482, lr=0.000005]Training Linear:  19%|█▉        | 29/150 [00:10<00:43,  2.76it/s, train_loss=0.2750, val_loss=0.4390, val_rmse=0.6482, lr=0.000005]
+
+早停触发于 epoch 30
+
+============================================================
+训练历史合并分析（评估模式: R²(越大越好)）：
+  最终保留: R²=0.3603, MSE=0.3521 (epoch 30)
+  累计训练轮数: 30
+============================================================
+
+✅ 已保存改进后的模型至: /root/Wind-direction-time-series-forecasting/models/Linear_multistep_16h.pth
+📝 训练日志已追加至: /root/Wind-direction-time-series-forecasting/logs/Linear_multistep_16h_training_log.jsonl
+
+============================================================
+测试结果: Linear - multistep_16h
+============================================================
+
+总体指标:
+  MSE:  3.5440
+  RMSE: 1.8825
+  MAE:  1.4862
+  R²:   0.5239
+
+各目标指标:
+
+  SpeedAvg_10m:
+    MSE:  1.9193
+    RMSE: 1.3854
+    MAE:  1.1141
+    R²:   0.3869
+
+  SpeedAvg_50m:
+    MSE:  3.6676
+    RMSE: 1.9151
+    MAE:  1.5391
+    R²:   0.4159
+
+  SpeedAvg_100m:
+    MSE:  5.0450
+    RMSE: 2.2461
+    MAE:  1.8054
+    R²:   0.4046
+
+--- 训练 LSTM ---
+模型参数量: 3,797,168
+📊 使用超参: lr=0.000300, patience=25, epochs=150, metric=r2
+
+============================================================
+训练 LSTM - multistep_16h
+============================================================
+设备: cuda
+学习率: 0.0003
+评估模式: R²(越大越好)
+训练轮数: 150
+早停耐心值: 25
+Training LSTM:   0%|          | 0/150 [00:00<?, ?it/s]Training LSTM:   0%|          | 0/150 [00:00<?, ?it/s, train_loss=0.6468, val_loss=0.4075, val_rmse=0.6269, lr=0.000300]Training LSTM:   1%|          | 1/150 [00:00<01:51,  1.33it/s, train_loss=0.6468, val_loss=0.4075, val_rmse=0.6269, lr=0.000300]Training LSTM:   1%|          | 1/150 [00:01<01:51,  1.33it/s, train_loss=0.3489, val_loss=0.3716, val_rmse=0.6004, lr=0.000293]Training LSTM:   1%|▏         | 2/150 [00:01<01:42,  1.44it/s, train_loss=0.3489, val_loss=0.3716, val_rmse=0.6004, lr=0.000293]Training LSTM:   1%|▏         | 2/150 [00:02<01:42,  1.44it/s, train_loss=0.3154, val_loss=0.3776, val_rmse=0.6074, lr=0.000272]Training LSTM:   2%|▏         | 3/150 [00:02<01:36,  1.52it/s, train_loss=0.3154, val_loss=0.3776, val_rmse=0.6074, lr=0.000272]Training LSTM:   2%|▏         | 3/150 [00:02<01:36,  1.52it/s, train_loss=0.2986, val_loss=0.3878, val_rmse=0.6136, lr=0.000239]Training LSTM:   3%|▎         | 4/150 [00:02<01:33,  1.56it/s, train_loss=0.2986, val_loss=0.3878, val_rmse=0.6136, lr=0.000239]Training LSTM:   3%|▎         | 4/150 [00:03<01:33,  1.56it/s, train_loss=0.2851, val_loss=0.4063, val_rmse=0.6260, lr=0.000197]Training LSTM:   3%|▎         | 5/150 [00:03<01:31,  1.58it/s, train_loss=0.2851, val_loss=0.4063, val_rmse=0.6260, lr=0.000197]Training LSTM:   3%|▎         | 5/150 [00:03<01:31,  1.58it/s, train_loss=0.2730, val_loss=0.4750, val_rmse=0.6788, lr=0.000151]Training LSTM:   4%|▍         | 6/150 [00:03<01:30,  1.60it/s, train_loss=0.2730, val_loss=0.4750, val_rmse=0.6788, lr=0.000151]Training LSTM:   4%|▍         | 6/150 [00:04<01:30,  1.60it/s, train_loss=0.2586, val_loss=0.5501, val_rmse=0.7342, lr=0.000106]Training LSTM:   5%|▍         | 7/150 [00:04<01:27,  1.63it/s, train_loss=0.2586, val_loss=0.5501, val_rmse=0.7342, lr=0.000106]Training LSTM:   5%|▍         | 7/150 [00:05<01:27,  1.63it/s, train_loss=0.2526, val_loss=0.5295, val_rmse=0.7185, lr=0.000064]Training LSTM:   5%|▌         | 8/150 [00:05<01:25,  1.65it/s, train_loss=0.2526, val_loss=0.5295, val_rmse=0.7185, lr=0.000064]Training LSTM:   5%|▌         | 8/150 [00:05<01:25,  1.65it/s, train_loss=0.2463, val_loss=0.5338, val_rmse=0.7213, lr=0.000031]Training LSTM:   6%|▌         | 9/150 [00:05<01:24,  1.67it/s, train_loss=0.2463, val_loss=0.5338, val_rmse=0.7213, lr=0.000031]Training LSTM:   6%|▌         | 9/150 [00:06<01:24,  1.67it/s, train_loss=0.2433, val_loss=0.5426, val_rmse=0.7281, lr=0.000010]Training LSTM:   7%|▋         | 10/150 [00:06<01:23,  1.67it/s, train_loss=0.2433, val_loss=0.5426, val_rmse=0.7281, lr=0.000010]Training LSTM:   7%|▋         | 10/150 [00:06<01:23,  1.67it/s, train_loss=0.2412, val_loss=0.5645, val_rmse=0.7426, lr=0.000150]Training LSTM:   7%|▋         | 11/150 [00:06<01:22,  1.68it/s, train_loss=0.2412, val_loss=0.5645, val_rmse=0.7426, lr=0.000150]Training LSTM:   7%|▋         | 11/150 [00:07<01:22,  1.68it/s, train_loss=0.2442, val_loss=0.5459, val_rmse=0.7300, lr=0.000298]Training LSTM:   8%|▊         | 12/150 [00:07<01:22,  1.68it/s, train_loss=0.2442, val_loss=0.5459, val_rmse=0.7300, lr=0.000298]Training LSTM:   8%|▊         | 12/150 [00:08<01:22,  1.68it/s, train_loss=0.2423, val_loss=0.5417, val_rmse=0.7245, lr=0.000293]Training LSTM:   9%|▊         | 13/150 [00:08<01:21,  1.68it/s, train_loss=0.2423, val_loss=0.5417, val_rmse=0.7245, lr=0.000293]Training LSTM:   9%|▊         | 13/150 [00:08<01:21,  1.68it/s, train_loss=0.2343, val_loss=0.5432, val_rmse=0.7231, lr=0.000284]Training LSTM:   9%|▉         | 14/150 [00:08<01:20,  1.68it/s, train_loss=0.2343, val_loss=0.5432, val_rmse=0.7231, lr=0.000284]Training LSTM:   9%|▉         | 14/150 [00:09<01:20,  1.68it/s, train_loss=0.2195, val_loss=0.6943, val_rmse=0.8191, lr=0.000272]Training LSTM:  10%|█         | 15/150 [00:09<01:21,  1.66it/s, train_loss=0.2195, val_loss=0.6943, val_rmse=0.8191, lr=0.000272]Training LSTM:  10%|█         | 15/150 [00:09<01:21,  1.66it/s, train_loss=0.2082, val_loss=0.7369, val_rmse=0.8438, lr=0.000257]Training LSTM:  11%|█         | 16/150 [00:09<01:20,  1.66it/s, train_loss=0.2082, val_loss=0.7369, val_rmse=0.8438, lr=0.000257]Training LSTM:  11%|█         | 16/150 [00:10<01:20,  1.66it/s, train_loss=0.1972, val_loss=0.7889, val_rmse=0.8736, lr=0.000239]Training LSTM:  11%|█▏        | 17/150 [00:10<01:20,  1.65it/s, train_loss=0.1972, val_loss=0.7889, val_rmse=0.8736, lr=0.000239]Training LSTM:  11%|█▏        | 17/150 [00:11<01:20,  1.65it/s, train_loss=0.1853, val_loss=0.7019, val_rmse=0.8254, lr=0.000219]Training LSTM:  12%|█▏        | 18/150 [00:11<01:20,  1.64it/s, train_loss=0.1853, val_loss=0.7019, val_rmse=0.8254, lr=0.000219]Training LSTM:  12%|█▏        | 18/150 [00:11<01:20,  1.64it/s, train_loss=0.1777, val_loss=0.6730, val_rmse=0.8091, lr=0.000197]Training LSTM:  13%|█▎        | 19/150 [00:11<01:19,  1.64it/s, train_loss=0.1777, val_loss=0.6730, val_rmse=0.8091, lr=0.000197]Training LSTM:  13%|█▎        | 19/150 [00:12<01:19,  1.64it/s, train_loss=0.1706, val_loss=0.7919, val_rmse=0.8743, lr=0.000087]Training LSTM:  13%|█▎        | 20/150 [00:12<01:18,  1.65it/s, train_loss=0.1706, val_loss=0.7919, val_rmse=0.8743, lr=0.000087]Training LSTM:  13%|█▎        | 20/150 [00:12<01:18,  1.65it/s, train_loss=0.1618, val_loss=0.7480, val_rmse=0.8492, lr=0.000151]Training LSTM:  14%|█▍        | 21/150 [00:12<01:19,  1.62it/s, train_loss=0.1618, val_loss=0.7480, val_rmse=0.8492, lr=0.000151]Training LSTM:  14%|█▍        | 21/150 [00:13<01:19,  1.62it/s, train_loss=0.1596, val_loss=0.7099, val_rmse=0.8263, lr=0.000128]Training LSTM:  15%|█▍        | 22/150 [00:13<01:19,  1.61it/s, train_loss=0.1596, val_loss=0.7099, val_rmse=0.8263, lr=0.000128]Training LSTM:  15%|█▍        | 22/150 [00:14<01:19,  1.61it/s, train_loss=0.1555, val_loss=0.7926, val_rmse=0.8757, lr=0.000106]Training LSTM:  15%|█▌        | 23/150 [00:14<01:19,  1.60it/s, train_loss=0.1555, val_loss=0.7926, val_rmse=0.8757, lr=0.000106]Training LSTM:  15%|█▌        | 23/150 [00:14<01:19,  1.60it/s, train_loss=0.1503, val_loss=0.7651, val_rmse=0.8590, lr=0.000084]Training LSTM:  16%|█▌        | 24/150 [00:14<01:19,  1.59it/s, train_loss=0.1503, val_loss=0.7651, val_rmse=0.8590, lr=0.000084]Training LSTM:  16%|█▌        | 24/150 [00:15<01:19,  1.59it/s, train_loss=0.1468, val_loss=0.6984, val_rmse=0.8231, lr=0.000064]Training LSTM:  17%|█▋        | 25/150 [00:15<01:24,  1.48it/s, train_loss=0.1468, val_loss=0.6984, val_rmse=0.8231, lr=0.000064]Training LSTM:  17%|█▋        | 25/150 [00:16<01:24,  1.48it/s, train_loss=0.1444, val_loss=0.7870, val_rmse=0.8711, lr=0.000046]Training LSTM:  17%|█▋        | 26/150 [00:16<01:21,  1.52it/s, train_loss=0.1444, val_loss=0.7870, val_rmse=0.8711, lr=0.000046]Training LSTM:  17%|█▋        | 26/150 [00:16<01:21,  1.52it/s, train_loss=0.1402, val_loss=0.7456, val_rmse=0.8475, lr=0.000031]Training LSTM:  17%|█▋        | 26/150 [00:16<01:20,  1.54it/s, train_loss=0.1402, val_loss=0.7456, val_rmse=0.8475, lr=0.000031]
+
+早停触发于 epoch 27
+
+============================================================
+训练历史合并分析（评估模式: R²(越大越好)）：
+  最终保留: R²=0.3451, MSE=0.3605 (epoch 27)
+  累计训练轮数: 27
+============================================================
+
+✅ 已保存改进后的模型至: /root/Wind-direction-time-series-forecasting/models/LSTM_multistep_16h.pth
+📝 训练日志已追加至: /root/Wind-direction-time-series-forecasting/logs/LSTM_multistep_16h_training_log.jsonl
+
+============================================================
+测试结果: LSTM - multistep_16h
+============================================================
+
+总体指标:
+  MSE:  3.6327
+  RMSE: 1.9060
+  MAE:  1.4945
+  R²:   0.5120
+
+各目标指标:
+
+  SpeedAvg_10m:
+    MSE:  1.9158
+    RMSE: 1.3841
+    MAE:  1.1069
+    R²:   0.3880
+
+  SpeedAvg_50m:
+    MSE:  3.8194
+    RMSE: 1.9543
+    MAE:  1.5605
+    R²:   0.3917
+
+  SpeedAvg_100m:
+    MSE:  5.1629
+    RMSE: 2.2722
+    MAE:  1.8161
+    R²:   0.3907
+
+--- 训练 Transformer ---
+模型参数量: 1,855,619
+📊 使用超参: lr=0.000300, patience=25, epochs=150, metric=r2
+
+============================================================
+训练 Transformer - multistep_16h
+============================================================
+设备: cuda
+学习率: 0.0003
+评估模式: R²(越大越好)
+训练轮数: 150
+早停耐心值: 25
+Training Transformer:   0%|          | 0/150 [00:00<?, ?it/s]Training Transformer:   0%|          | 0/150 [00:02<?, ?it/s, train_loss=0.5027, val_loss=0.3687, val_rmse=0.5936, lr=0.000300]Training Transformer:   1%|          | 1/150 [00:02<06:31,  2.63s/it, train_loss=0.5027, val_loss=0.3687, val_rmse=0.5936, lr=0.000300]Training Transformer:   1%|          | 1/150 [00:05<06:31,  2.63s/it, train_loss=0.3564, val_loss=0.4466, val_rmse=0.6539, lr=0.000293]Training Transformer:   1%|▏         | 2/150 [00:05<06:10,  2.50s/it, train_loss=0.3564, val_loss=0.4466, val_rmse=0.6539, lr=0.000293]Training Transformer:   1%|▏         | 2/150 [00:07<06:10,  2.50s/it, train_loss=0.3265, val_loss=0.4224, val_rmse=0.6407, lr=0.000272]Training Transformer:   2%|▏         | 3/150 [00:07<05:55,  2.42s/it, train_loss=0.3265, val_loss=0.4224, val_rmse=0.6407, lr=0.000272]Training Transformer:   2%|▏         | 3/150 [00:09<05:55,  2.42s/it, train_loss=0.3069, val_loss=0.6190, val_rmse=0.7760, lr=0.000239]Training Transformer:   3%|▎         | 4/150 [00:09<05:42,  2.35s/it, train_loss=0.3069, val_loss=0.6190, val_rmse=0.7760, lr=0.000239]Training Transformer:   3%|▎         | 4/150 [00:11<05:42,  2.35s/it, train_loss=0.2887, val_loss=0.5684, val_rmse=0.7453, lr=0.000197]Training Transformer:   3%|▎         | 5/150 [00:11<05:32,  2.29s/it, train_loss=0.2887, val_loss=0.5684, val_rmse=0.7453, lr=0.000197]Training Transformer:   3%|▎         | 5/150 [00:13<05:32,  2.29s/it, train_loss=0.2735, val_loss=0.6008, val_rmse=0.7655, lr=0.000151]Training Transformer:   4%|▍         | 6/150 [00:13<05:25,  2.26s/it, train_loss=0.2735, val_loss=0.6008, val_rmse=0.7655, lr=0.000151]Training Transformer:   4%|▍         | 6/150 [00:16<05:25,  2.26s/it, train_loss=0.2628, val_loss=0.6814, val_rmse=0.8145, lr=0.000106]Training Transformer:   5%|▍         | 7/150 [00:16<05:22,  2.26s/it, train_loss=0.2628, val_loss=0.6814, val_rmse=0.8145, lr=0.000106]Training Transformer:   5%|▍         | 7/150 [00:18<05:22,  2.26s/it, train_loss=0.2510, val_loss=0.7505, val_rmse=0.8507, lr=0.000064]Training Transformer:   5%|▌         | 8/150 [00:18<05:20,  2.25s/it, train_loss=0.2510, val_loss=0.7505, val_rmse=0.8507, lr=0.000064]Training Transformer:   5%|▌         | 8/150 [00:20<05:20,  2.25s/it, train_loss=0.2437, val_loss=0.7087, val_rmse=0.8289, lr=0.000031]Training Transformer:   6%|▌         | 9/150 [00:20<05:17,  2.25s/it, train_loss=0.2437, val_loss=0.7087, val_rmse=0.8289, lr=0.000031]Training Transformer:   6%|▌         | 9/150 [00:23<05:17,  2.25s/it, train_loss=0.2374, val_loss=0.7803, val_rmse=0.8688, lr=0.000005]Training Transformer:   7%|▋         | 10/150 [00:23<05:17,  2.27s/it, train_loss=0.2374, val_loss=0.7803, val_rmse=0.8688, lr=0.000005]Training Transformer:   7%|▋         | 10/150 [00:25<05:17,  2.27s/it, train_loss=0.2349, val_loss=0.7404, val_rmse=0.8467, lr=0.000300]Training Transformer:   7%|▋         | 11/150 [00:25<05:14,  2.26s/it, train_loss=0.2349, val_loss=0.7404, val_rmse=0.8467, lr=0.000300]Training Transformer:   7%|▋         | 11/150 [00:27<05:14,  2.26s/it, train_loss=0.2510, val_loss=0.5577, val_rmse=0.7327, lr=0.000298]Training Transformer:   8%|▊         | 12/150 [00:27<05:13,  2.27s/it, train_loss=0.2510, val_loss=0.5577, val_rmse=0.7327, lr=0.000298]Training Transformer:   8%|▊         | 12/150 [00:29<05:13,  2.27s/it, train_loss=0.2509, val_loss=0.6872, val_rmse=0.8160, lr=0.000293]Training Transformer:   9%|▊         | 13/150 [00:29<05:08,  2.25s/it, train_loss=0.2509, val_loss=0.6872, val_rmse=0.8160, lr=0.000293]Training Transformer:   9%|▊         | 13/150 [00:32<05:08,  2.25s/it, train_loss=0.2328, val_loss=0.5607, val_rmse=0.7349, lr=0.000284]Training Transformer:   9%|▉         | 14/150 [00:32<05:05,  2.25s/it, train_loss=0.2328, val_loss=0.5607, val_rmse=0.7349, lr=0.000284]Training Transformer:   9%|▉         | 14/150 [00:34<05:05,  2.25s/it, train_loss=0.2272, val_loss=0.7111, val_rmse=0.8289, lr=0.000272]Training Transformer:  10%|█         | 15/150 [00:34<05:05,  2.26s/it, train_loss=0.2272, val_loss=0.7111, val_rmse=0.8289, lr=0.000272]Training Transformer:  10%|█         | 15/150 [00:36<05:05,  2.26s/it, train_loss=0.2121, val_loss=0.7925, val_rmse=0.8661, lr=0.000257]Training Transformer:  11%|█         | 16/150 [00:36<05:02,  2.26s/it, train_loss=0.2121, val_loss=0.7925, val_rmse=0.8661, lr=0.000257]Training Transformer:  11%|█         | 16/150 [00:38<05:02,  2.26s/it, train_loss=0.2120, val_loss=0.7182, val_rmse=0.8288, lr=0.000239]Training Transformer:  11%|█▏        | 17/150 [00:38<05:04,  2.29s/it, train_loss=0.2120, val_loss=0.7182, val_rmse=0.8288, lr=0.000239]Training Transformer:  11%|█▏        | 17/150 [00:41<05:04,  2.29s/it, train_loss=0.1994, val_loss=0.7561, val_rmse=0.8510, lr=0.000219]Training Transformer:  12%|█▏        | 18/150 [00:41<05:02,  2.29s/it, train_loss=0.1994, val_loss=0.7561, val_rmse=0.8510, lr=0.000219]Training Transformer:  12%|█▏        | 18/150 [00:43<05:02,  2.29s/it, train_loss=0.1950, val_loss=0.7354, val_rmse=0.8385, lr=0.000099]Training Transformer:  13%|█▎        | 19/150 [00:43<05:01,  2.30s/it, train_loss=0.1950, val_loss=0.7354, val_rmse=0.8385, lr=0.000099]Training Transformer:  13%|█▎        | 19/150 [00:45<05:01,  2.30s/it, train_loss=0.1835, val_loss=0.7298, val_rmse=0.8345, lr=0.000175]Training Transformer:  13%|█▎        | 20/150 [00:45<04:58,  2.30s/it, train_loss=0.1835, val_loss=0.7298, val_rmse=0.8345, lr=0.000175]Training Transformer:  13%|█▎        | 20/150 [00:48<04:58,  2.30s/it, train_loss=0.1856, val_loss=0.6787, val_rmse=0.8028, lr=0.000151]Training Transformer:  14%|█▍        | 21/150 [00:48<04:55,  2.29s/it, train_loss=0.1856, val_loss=0.6787, val_rmse=0.8028, lr=0.000151]Training Transformer:  14%|█▍        | 21/150 [00:50<04:55,  2.29s/it, train_loss=0.1797, val_loss=0.6988, val_rmse=0.8151, lr=0.000128]Training Transformer:  15%|█▍        | 22/150 [00:50<04:58,  2.33s/it, train_loss=0.1797, val_loss=0.6988, val_rmse=0.8151, lr=0.000128]Training Transformer:  15%|█▍        | 22/150 [00:52<04:58,  2.33s/it, train_loss=0.1749, val_loss=0.6707, val_rmse=0.8012, lr=0.000106]Training Transformer:  15%|█▌        | 23/150 [00:52<04:56,  2.33s/it, train_loss=0.1749, val_loss=0.6707, val_rmse=0.8012, lr=0.000106]Training Transformer:  15%|█▌        | 23/150 [00:55<04:56,  2.33s/it, train_loss=0.1711, val_loss=0.7225, val_rmse=0.8287, lr=0.000084]Training Transformer:  16%|█▌        | 24/150 [00:55<04:47,  2.28s/it, train_loss=0.1711, val_loss=0.7225, val_rmse=0.8287, lr=0.000084]Training Transformer:  16%|█▌        | 24/150 [00:57<04:47,  2.28s/it, train_loss=0.1647, val_loss=0.7529, val_rmse=0.8453, lr=0.000064]Training Transformer:  17%|█▋        | 25/150 [00:57<04:42,  2.26s/it, train_loss=0.1647, val_loss=0.7529, val_rmse=0.8453, lr=0.000064]Training Transformer:  17%|█▋        | 25/150 [00:59<04:42,  2.26s/it, train_loss=0.1644, val_loss=0.7263, val_rmse=0.8313, lr=0.000046]Training Transformer:  17%|█▋        | 25/150 [00:59<04:58,  2.39s/it, train_loss=0.1644, val_loss=0.7263, val_rmse=0.8313, lr=0.000046]
+
+早停触发于 epoch 26
+
+============================================================
+训练历史合并分析（评估模式: R²(越大越好)）：
+  最终保留: R²=0.3600, MSE=0.3523 (epoch 26)
+  累计训练轮数: 26
+============================================================
+
+✅ 已保存改进后的模型至: /root/Wind-direction-time-series-forecasting/models/Transformer_multistep_16h.pth
+📝 训练日志已追加至: /root/Wind-direction-time-series-forecasting/logs/Transformer_multistep_16h_training_log.jsonl
+
+============================================================
+测试结果: Transformer - multistep_16h
+============================================================
+
+总体指标:
+  MSE:  4.0596
+  RMSE: 2.0148
+  MAE:  1.5991
+  R²:   0.4546
+
+各目标指标:
+
+  SpeedAvg_10m:
+    MSE:  2.1015
+    RMSE: 1.4497
+    MAE:  1.1709
+    R²:   0.3287
+
+  SpeedAvg_50m:
+    MSE:  4.3056
+    RMSE: 2.0750
+    MAE:  1.6823
+    R²:   0.3142
+
+  SpeedAvg_100m:
+    MSE:  5.7716
+    RMSE: 2.4024
+    MAE:  1.9442
+    R²:   0.3188
+
+======================================================================
+步骤3: 训练创新模型
+======================================================================
+
+==================================================
+任务: 多步预测（8小时→16小时）
+==================================================
+
+特征数量: 21
+目标数量: 3
+
+数据集划分:
+  训练集: 7401 样本
+  验证集: 2114 样本
+  测试集: 1058 样本
+
+--- 训练 CNN_LSTM ---
+模型参数量: 245,137
+📊 使用超参: lr=0.000300, patience=25, epochs=150, metric=r2
+
+============================================================
+训练 CNN_LSTM - multistep_16h
+============================================================
+设备: cuda
+学习率: 0.0003
+评估模式: R²(越大越好)
+训练轮数: 150
+早停耐心值: 25
+Training CNN_LSTM:   0%|          | 0/150 [00:00<?, ?it/s]Training CNN_LSTM:   0%|          | 0/150 [00:01<?, ?it/s, train_loss=0.8359, val_loss=0.4464, val_rmse=0.6636, lr=0.000300]Training CNN_LSTM:   1%|          | 1/150 [00:01<03:16,  1.32s/it, train_loss=0.8359, val_loss=0.4464, val_rmse=0.6636, lr=0.000300]Training CNN_LSTM:   1%|          | 1/150 [00:02<03:16,  1.32s/it, train_loss=0.3902, val_loss=0.4120, val_rmse=0.6283, lr=0.000293]Training CNN_LSTM:   1%|▏         | 2/150 [00:02<02:25,  1.02it/s, train_loss=0.3902, val_loss=0.4120, val_rmse=0.6283, lr=0.000293]Training CNN_LSTM:   1%|▏         | 2/150 [00:02<02:25,  1.02it/s, train_loss=0.3095, val_loss=0.4318, val_rmse=0.6425, lr=0.000272]Training CNN_LSTM:   2%|▏         | 3/150 [00:02<02:07,  1.15it/s, train_loss=0.3095, val_loss=0.4318, val_rmse=0.6425, lr=0.000272]Training CNN_LSTM:   2%|▏         | 3/150 [00:03<02:07,  1.15it/s, train_loss=0.2770, val_loss=0.4654, val_rmse=0.6740, lr=0.000239]Training CNN_LSTM:   3%|▎         | 4/150 [00:03<02:00,  1.22it/s, train_loss=0.2770, val_loss=0.4654, val_rmse=0.6740, lr=0.000239]Training CNN_LSTM:   3%|▎         | 4/150 [00:04<02:00,  1.22it/s, train_loss=0.2584, val_loss=0.4505, val_rmse=0.6574, lr=0.000197]Training CNN_LSTM:   3%|▎         | 5/150 [00:04<01:58,  1.22it/s, train_loss=0.2584, val_loss=0.4505, val_rmse=0.6574, lr=0.000197]Training CNN_LSTM:   3%|▎         | 5/150 [00:05<01:58,  1.22it/s, train_loss=0.2417, val_loss=0.4849, val_rmse=0.6839, lr=0.000151]Training CNN_LSTM:   4%|▍         | 6/150 [00:05<01:53,  1.26it/s, train_loss=0.2417, val_loss=0.4849, val_rmse=0.6839, lr=0.000151]Training CNN_LSTM:   4%|▍         | 6/150 [00:05<01:53,  1.26it/s, train_loss=0.2308, val_loss=0.4537, val_rmse=0.6614, lr=0.000106]Training CNN_LSTM:   5%|▍         | 7/150 [00:05<01:49,  1.30it/s, train_loss=0.2308, val_loss=0.4537, val_rmse=0.6614, lr=0.000106]Training CNN_LSTM:   5%|▍         | 7/150 [00:06<01:49,  1.30it/s, train_loss=0.2219, val_loss=0.4478, val_rmse=0.6564, lr=0.000064]Training CNN_LSTM:   5%|▌         | 8/150 [00:06<01:46,  1.33it/s, train_loss=0.2219, val_loss=0.4478, val_rmse=0.6564, lr=0.000064]Training CNN_LSTM:   5%|▌         | 8/150 [00:07<01:46,  1.33it/s, train_loss=0.2179, val_loss=0.4588, val_rmse=0.6623, lr=0.000031]Training CNN_LSTM:   6%|▌         | 9/150 [00:07<01:46,  1.33it/s, train_loss=0.2179, val_loss=0.4588, val_rmse=0.6623, lr=0.000031]Training CNN_LSTM:   6%|▌         | 9/150 [00:08<01:46,  1.33it/s, train_loss=0.2144, val_loss=0.4502, val_rmse=0.6572, lr=0.000010]Training CNN_LSTM:   7%|▋         | 10/150 [00:08<01:45,  1.32it/s, train_loss=0.2144, val_loss=0.4502, val_rmse=0.6572, lr=0.000010]Training CNN_LSTM:   7%|▋         | 10/150 [00:08<01:45,  1.32it/s, train_loss=0.2127, val_loss=0.4519, val_rmse=0.6577, lr=0.000150]Training CNN_LSTM:   7%|▋         | 11/150 [00:08<01:44,  1.33it/s, train_loss=0.2127, val_loss=0.4519, val_rmse=0.6577, lr=0.000150]Training CNN_LSTM:   7%|▋         | 11/150 [00:09<01:44,  1.33it/s, train_loss=0.2119, val_loss=0.4701, val_rmse=0.6686, lr=0.000298]Training CNN_LSTM:   8%|▊         | 12/150 [00:09<01:42,  1.35it/s, train_loss=0.2119, val_loss=0.4701, val_rmse=0.6686, lr=0.000298]Training CNN_LSTM:   8%|▊         | 12/150 [00:10<01:42,  1.35it/s, train_loss=0.2084, val_loss=0.4804, val_rmse=0.6801, lr=0.000293]Training CNN_LSTM:   9%|▊         | 13/150 [00:10<01:40,  1.36it/s, train_loss=0.2084, val_loss=0.4804, val_rmse=0.6801, lr=0.000293]Training CNN_LSTM:   9%|▊         | 13/150 [00:10<01:40,  1.36it/s, train_loss=0.1975, val_loss=0.5040, val_rmse=0.6985, lr=0.000284]Training CNN_LSTM:   9%|▉         | 14/150 [00:10<01:40,  1.35it/s, train_loss=0.1975, val_loss=0.5040, val_rmse=0.6985, lr=0.000284]Training CNN_LSTM:   9%|▉         | 14/150 [00:11<01:40,  1.35it/s, train_loss=0.1901, val_loss=0.4689, val_rmse=0.6715, lr=0.000272]Training CNN_LSTM:  10%|█         | 15/150 [00:11<01:40,  1.34it/s, train_loss=0.1901, val_loss=0.4689, val_rmse=0.6715, lr=0.000272]Training CNN_LSTM:  10%|█         | 15/150 [00:12<01:40,  1.34it/s, train_loss=0.1851, val_loss=0.4500, val_rmse=0.6558, lr=0.000257]Training CNN_LSTM:  11%|█         | 16/150 [00:12<01:39,  1.34it/s, train_loss=0.1851, val_loss=0.4500, val_rmse=0.6558, lr=0.000257]Training CNN_LSTM:  11%|█         | 16/150 [00:13<01:39,  1.34it/s, train_loss=0.1749, val_loss=0.5169, val_rmse=0.7038, lr=0.000239]Training CNN_LSTM:  11%|█▏        | 17/150 [00:13<01:38,  1.34it/s, train_loss=0.1749, val_loss=0.5169, val_rmse=0.7038, lr=0.000239]Training CNN_LSTM:  11%|█▏        | 17/150 [00:13<01:38,  1.34it/s, train_loss=0.1683, val_loss=0.5072, val_rmse=0.6995, lr=0.000219]Training CNN_LSTM:  12%|█▏        | 18/150 [00:13<01:38,  1.34it/s, train_loss=0.1683, val_loss=0.5072, val_rmse=0.6995, lr=0.000219]Training CNN_LSTM:  12%|█▏        | 18/150 [00:14<01:38,  1.34it/s, train_loss=0.1654, val_loss=0.4774, val_rmse=0.6821, lr=0.000197]Training CNN_LSTM:  13%|█▎        | 19/150 [00:14<01:38,  1.34it/s, train_loss=0.1654, val_loss=0.4774, val_rmse=0.6821, lr=0.000197]Training CNN_LSTM:  13%|█▎        | 19/150 [00:15<01:38,  1.34it/s, train_loss=0.1584, val_loss=0.4703, val_rmse=0.6743, lr=0.000087]Training CNN_LSTM:  13%|█▎        | 20/150 [00:15<01:36,  1.35it/s, train_loss=0.1584, val_loss=0.4703, val_rmse=0.6743, lr=0.000087]Training CNN_LSTM:  13%|█▎        | 20/150 [00:16<01:36,  1.35it/s, train_loss=0.1536, val_loss=0.5044, val_rmse=0.6997, lr=0.000151]Training CNN_LSTM:  14%|█▍        | 21/150 [00:16<01:35,  1.35it/s, train_loss=0.1536, val_loss=0.5044, val_rmse=0.6997, lr=0.000151]Training CNN_LSTM:  14%|█▍        | 21/150 [00:16<01:35,  1.35it/s, train_loss=0.1517, val_loss=0.5010, val_rmse=0.6986, lr=0.000128]Training CNN_LSTM:  15%|█▍        | 22/150 [00:16<01:34,  1.36it/s, train_loss=0.1517, val_loss=0.5010, val_rmse=0.6986, lr=0.000128]Training CNN_LSTM:  15%|█▍        | 22/150 [00:17<01:34,  1.36it/s, train_loss=0.1497, val_loss=0.5182, val_rmse=0.7078, lr=0.000106]Training CNN_LSTM:  15%|█▌        | 23/150 [00:17<01:36,  1.32it/s, train_loss=0.1497, val_loss=0.5182, val_rmse=0.7078, lr=0.000106]Training CNN_LSTM:  15%|█▌        | 23/150 [00:18<01:36,  1.32it/s, train_loss=0.1483, val_loss=0.5059, val_rmse=0.7013, lr=0.000084]Training CNN_LSTM:  16%|█▌        | 24/150 [00:18<01:36,  1.30it/s, train_loss=0.1483, val_loss=0.5059, val_rmse=0.7013, lr=0.000084]Training CNN_LSTM:  16%|█▌        | 24/150 [00:19<01:36,  1.30it/s, train_loss=0.1473, val_loss=0.5068, val_rmse=0.7006, lr=0.000064]Training CNN_LSTM:  17%|█▋        | 25/150 [00:19<01:36,  1.30it/s, train_loss=0.1473, val_loss=0.5068, val_rmse=0.7006, lr=0.000064]Training CNN_LSTM:  17%|█▋        | 25/150 [00:20<01:36,  1.30it/s, train_loss=0.1445, val_loss=0.4884, val_rmse=0.6904, lr=0.000046]Training CNN_LSTM:  17%|█▋        | 26/150 [00:20<01:33,  1.33it/s, train_loss=0.1445, val_loss=0.4884, val_rmse=0.6904, lr=0.000046]Training CNN_LSTM:  17%|█▋        | 26/150 [00:20<01:33,  1.33it/s, train_loss=0.1438, val_loss=0.4946, val_rmse=0.6931, lr=0.000031]Training CNN_LSTM:  17%|█▋        | 26/150 [00:20<01:38,  1.25it/s, train_loss=0.1438, val_loss=0.4946, val_rmse=0.6931, lr=0.000031]
+
+早停触发于 epoch 27
+
+============================================================
+训练历史合并分析（评估模式: R²(越大越好)）：
+  最终保留: R²=0.2828, MSE=0.3948 (epoch 27)
+  累计训练轮数: 27
+============================================================
+
+✅ 已保存改进后的模型至: /root/Wind-direction-time-series-forecasting/models/CNN_LSTM_multistep_16h.pth
+📝 训练日志已追加至: /root/Wind-direction-time-series-forecasting/logs/CNN_LSTM_multistep_16h_training_log.jsonl
+
+============================================================
+测试结果: CNN_LSTM - multistep_16h
+============================================================
+
+总体指标:
+  MSE:  4.1059
+  RMSE: 2.0263
+  MAE:  1.6049
+  R²:   0.4484
+
+各目标指标:
+
+  SpeedAvg_10m:
+    MSE:  2.1611
+    RMSE: 1.4701
+    MAE:  1.1863
+    R²:   0.3096
+
+  SpeedAvg_50m:
+    MSE:  4.3031
+    RMSE: 2.0744
+    MAE:  1.6759
+    R²:   0.3146
+
+  SpeedAvg_100m:
+    MSE:  5.8535
+    RMSE: 2.4194
+    MAE:  1.9525
+    R²:   0.3092
+
+--- 训练 Attention_LSTM ---
+模型参数量: 472,082
+📊 使用超参: lr=0.000300, patience=25, epochs=150, metric=r2
+
+============================================================
+训练 Attention_LSTM - multistep_16h
+============================================================
+设备: cuda
+学习率: 0.0003
+评估模式: R²(越大越好)
+训练轮数: 150
+早停耐心值: 25
+Training Attention_LSTM:   0%|          | 0/150 [00:00<?, ?it/s]Training Attention_LSTM:   0%|          | 0/150 [00:00<?, ?it/s, train_loss=0.6263, val_loss=0.5183, val_rmse=0.7070, lr=0.000300]Training Attention_LSTM:   1%|          | 1/150 [00:00<01:49,  1.36it/s, train_loss=0.6263, val_loss=0.5183, val_rmse=0.7070, lr=0.000300]Training Attention_LSTM:   1%|          | 1/150 [00:01<01:49,  1.36it/s, train_loss=0.3447, val_loss=0.4745, val_rmse=0.6726, lr=0.000293]Training Attention_LSTM:   1%|▏         | 2/150 [00:01<01:52,  1.31it/s, train_loss=0.3447, val_loss=0.4745, val_rmse=0.6726, lr=0.000293]Training Attention_LSTM:   1%|▏         | 2/150 [00:02<01:52,  1.31it/s, train_loss=0.2887, val_loss=0.5025, val_rmse=0.6880, lr=0.000272]Training Attention_LSTM:   2%|▏         | 3/150 [00:02<01:51,  1.31it/s, train_loss=0.2887, val_loss=0.5025, val_rmse=0.6880, lr=0.000272]Training Attention_LSTM:   2%|▏         | 3/150 [00:03<01:51,  1.31it/s, train_loss=0.2572, val_loss=0.6141, val_rmse=0.7585, lr=0.000239]Training Attention_LSTM:   3%|▎         | 4/150 [00:03<01:51,  1.31it/s, train_loss=0.2572, val_loss=0.6141, val_rmse=0.7585, lr=0.000239]Training Attention_LSTM:   3%|▎         | 4/150 [00:03<01:51,  1.31it/s, train_loss=0.2318, val_loss=0.6436, val_rmse=0.7807, lr=0.000197]Training Attention_LSTM:   3%|▎         | 5/150 [00:03<01:47,  1.35it/s, train_loss=0.2318, val_loss=0.6436, val_rmse=0.7807, lr=0.000197]Training Attention_LSTM:   3%|▎         | 5/150 [00:04<01:47,  1.35it/s, train_loss=0.2132, val_loss=0.6460, val_rmse=0.7804, lr=0.000151]Training Attention_LSTM:   4%|▍         | 6/150 [00:04<01:44,  1.38it/s, train_loss=0.2132, val_loss=0.6460, val_rmse=0.7804, lr=0.000151]Training Attention_LSTM:   4%|▍         | 6/150 [00:05<01:44,  1.38it/s, train_loss=0.1970, val_loss=0.6727, val_rmse=0.7945, lr=0.000106]Training Attention_LSTM:   5%|▍         | 7/150 [00:05<01:43,  1.39it/s, train_loss=0.1970, val_loss=0.6727, val_rmse=0.7945, lr=0.000106]Training Attention_LSTM:   5%|▍         | 7/150 [00:05<01:43,  1.39it/s, train_loss=0.1906, val_loss=0.6449, val_rmse=0.7776, lr=0.000064]Training Attention_LSTM:   5%|▌         | 8/150 [00:05<01:42,  1.39it/s, train_loss=0.1906, val_loss=0.6449, val_rmse=0.7776, lr=0.000064]Training Attention_LSTM:   5%|▌         | 8/150 [00:06<01:42,  1.39it/s, train_loss=0.1835, val_loss=0.6597, val_rmse=0.7887, lr=0.000031]Training Attention_LSTM:   6%|▌         | 9/150 [00:06<01:40,  1.41it/s, train_loss=0.1835, val_loss=0.6597, val_rmse=0.7887, lr=0.000031]Training Attention_LSTM:   6%|▌         | 9/150 [00:07<01:40,  1.41it/s, train_loss=0.1803, val_loss=0.6673, val_rmse=0.7937, lr=0.000010]Training Attention_LSTM:   7%|▋         | 10/150 [00:07<01:38,  1.42it/s, train_loss=0.1803, val_loss=0.6673, val_rmse=0.7937, lr=0.000010]Training Attention_LSTM:   7%|▋         | 10/150 [00:08<01:38,  1.42it/s, train_loss=0.1784, val_loss=0.6496, val_rmse=0.7830, lr=0.000150]Training Attention_LSTM:   7%|▋         | 11/150 [00:08<01:40,  1.39it/s, train_loss=0.1784, val_loss=0.6496, val_rmse=0.7830, lr=0.000150]Training Attention_LSTM:   7%|▋         | 11/150 [00:08<01:40,  1.39it/s, train_loss=0.1788, val_loss=0.6533, val_rmse=0.7865, lr=0.000298]Training Attention_LSTM:   8%|▊         | 12/150 [00:08<01:37,  1.41it/s, train_loss=0.1788, val_loss=0.6533, val_rmse=0.7865, lr=0.000298]Training Attention_LSTM:   8%|▊         | 12/150 [00:09<01:37,  1.41it/s, train_loss=0.1769, val_loss=0.6151, val_rmse=0.7627, lr=0.000293]Training Attention_LSTM:   9%|▊         | 13/150 [00:09<01:35,  1.43it/s, train_loss=0.1769, val_loss=0.6151, val_rmse=0.7627, lr=0.000293]Training Attention_LSTM:   9%|▊         | 13/150 [00:10<01:35,  1.43it/s, train_loss=0.1696, val_loss=0.6626, val_rmse=0.7936, lr=0.000284]Training Attention_LSTM:   9%|▉         | 14/150 [00:10<01:33,  1.45it/s, train_loss=0.1696, val_loss=0.6626, val_rmse=0.7936, lr=0.000284]Training Attention_LSTM:   9%|▉         | 14/150 [00:10<01:33,  1.45it/s, train_loss=0.1605, val_loss=0.6888, val_rmse=0.8137, lr=0.000272]Training Attention_LSTM:  10%|█         | 15/150 [00:10<01:33,  1.45it/s, train_loss=0.1605, val_loss=0.6888, val_rmse=0.8137, lr=0.000272]Training Attention_LSTM:  10%|█         | 15/150 [00:11<01:33,  1.45it/s, train_loss=0.1530, val_loss=0.6814, val_rmse=0.8083, lr=0.000257]Training Attention_LSTM:  11%|█         | 16/150 [00:11<01:33,  1.44it/s, train_loss=0.1530, val_loss=0.6814, val_rmse=0.8083, lr=0.000257]Training Attention_LSTM:  11%|█         | 16/150 [00:12<01:33,  1.44it/s, train_loss=0.1479, val_loss=0.6374, val_rmse=0.7799, lr=0.000239]Training Attention_LSTM:  11%|█▏        | 17/150 [00:12<01:32,  1.43it/s, train_loss=0.1479, val_loss=0.6374, val_rmse=0.7799, lr=0.000239]Training Attention_LSTM:  11%|█▏        | 17/150 [00:12<01:32,  1.43it/s, train_loss=0.1428, val_loss=0.6371, val_rmse=0.7823, lr=0.000219]Training Attention_LSTM:  12%|█▏        | 18/150 [00:12<01:32,  1.43it/s, train_loss=0.1428, val_loss=0.6371, val_rmse=0.7823, lr=0.000219]Training Attention_LSTM:  12%|█▏        | 18/150 [00:13<01:32,  1.43it/s, train_loss=0.1385, val_loss=0.6860, val_rmse=0.8095, lr=0.000197]Training Attention_LSTM:  13%|█▎        | 19/150 [00:13<01:32,  1.42it/s, train_loss=0.1385, val_loss=0.6860, val_rmse=0.8095, lr=0.000197]Training Attention_LSTM:  13%|█▎        | 19/150 [00:14<01:32,  1.42it/s, train_loss=0.1348, val_loss=0.7013, val_rmse=0.8186, lr=0.000087]Training Attention_LSTM:  13%|█▎        | 20/150 [00:14<01:32,  1.41it/s, train_loss=0.1348, val_loss=0.7013, val_rmse=0.8186, lr=0.000087]Training Attention_LSTM:  13%|█▎        | 20/150 [00:14<01:32,  1.41it/s, train_loss=0.1307, val_loss=0.6924, val_rmse=0.8125, lr=0.000151]Training Attention_LSTM:  14%|█▍        | 21/150 [00:14<01:30,  1.42it/s, train_loss=0.1307, val_loss=0.6924, val_rmse=0.8125, lr=0.000151]Training Attention_LSTM:  14%|█▍        | 21/150 [00:15<01:30,  1.42it/s, train_loss=0.1294, val_loss=0.7272, val_rmse=0.8347, lr=0.000128]Training Attention_LSTM:  15%|█▍        | 22/150 [00:15<01:30,  1.41it/s, train_loss=0.1294, val_loss=0.7272, val_rmse=0.8347, lr=0.000128]Training Attention_LSTM:  15%|█▍        | 22/150 [00:16<01:30,  1.41it/s, train_loss=0.1273, val_loss=0.6831, val_rmse=0.8076, lr=0.000106]Training Attention_LSTM:  15%|█▌        | 23/150 [00:16<01:29,  1.41it/s, train_loss=0.1273, val_loss=0.6831, val_rmse=0.8076, lr=0.000106]Training Attention_LSTM:  15%|█▌        | 23/150 [00:17<01:29,  1.41it/s, train_loss=0.1264, val_loss=0.7039, val_rmse=0.8198, lr=0.000084]Training Attention_LSTM:  16%|█▌        | 24/150 [00:17<01:29,  1.41it/s, train_loss=0.1264, val_loss=0.7039, val_rmse=0.8198, lr=0.000084]Training Attention_LSTM:  16%|█▌        | 24/150 [00:17<01:29,  1.41it/s, train_loss=0.1247, val_loss=0.7070, val_rmse=0.8213, lr=0.000064]Training Attention_LSTM:  17%|█▋        | 25/150 [00:17<01:30,  1.39it/s, train_loss=0.1247, val_loss=0.7070, val_rmse=0.8213, lr=0.000064]Training Attention_LSTM:  17%|█▋        | 25/150 [00:18<01:30,  1.39it/s, train_loss=0.1237, val_loss=0.7166, val_rmse=0.8269, lr=0.000046]Training Attention_LSTM:  17%|█▋        | 26/150 [00:18<01:29,  1.38it/s, train_loss=0.1237, val_loss=0.7166, val_rmse=0.8269, lr=0.000046]Training Attention_LSTM:  17%|█▋        | 26/150 [00:19<01:29,  1.38it/s, train_loss=0.1215, val_loss=0.6996, val_rmse=0.8168, lr=0.000031]Training Attention_LSTM:  17%|█▋        | 26/150 [00:19<01:32,  1.34it/s, train_loss=0.1215, val_loss=0.6996, val_rmse=0.8168, lr=0.000031]
+
+早停触发于 epoch 27
+
+============================================================
+训练历史合并分析（评估模式: R²(越大越好)）：
+  最终保留: R²=0.1783, MSE=0.4524 (epoch 27)
+  累计训练轮数: 27
+============================================================
+
+✅ 已保存改进后的模型至: /root/Wind-direction-time-series-forecasting/models/Attention_LSTM_multistep_16h.pth
+📝 训练日志已追加至: /root/Wind-direction-time-series-forecasting/logs/Attention_LSTM_multistep_16h_training_log.jsonl
+
+============================================================
+测试结果: Attention_LSTM - multistep_16h
+============================================================
+
+总体指标:
+  MSE:  4.2829
+  RMSE: 2.0695
+  MAE:  1.6437
+  R²:   0.4246
+
+各目标指标:
+
+  SpeedAvg_10m:
+    MSE:  2.2919
+    RMSE: 1.5139
+    MAE:  1.2218
+    R²:   0.2678
+
+  SpeedAvg_50m:
+    MSE:  4.4585
+    RMSE: 2.1115
+    MAE:  1.7118
+    R²:   0.2899
+
+  SpeedAvg_100m:
+    MSE:  6.0983
+    RMSE: 2.4695
+    MAE:  1.9976
+    R²:   0.2803
+
+--- 训练 TCN ---
+模型参数量: 68,497
+📊 使用超参: lr=0.000300, patience=25, epochs=150, metric=r2
+
+============================================================
+训练 TCN - multistep_16h
+============================================================
+设备: cuda
+学习率: 0.0003
+评估模式: R²(越大越好)
+训练轮数: 150
+早停耐心值: 25
+Training TCN:   0%|          | 0/150 [00:00<?, ?it/s]Training TCN:   0%|          | 0/150 [00:00<?, ?it/s, train_loss=0.7987, val_loss=0.5275, val_rmse=0.7084, lr=0.000300]Training TCN:   1%|          | 1/150 [00:00<02:06,  1.18it/s, train_loss=0.7987, val_loss=0.5275, val_rmse=0.7084, lr=0.000300]Training TCN:   1%|          | 1/150 [00:01<02:06,  1.18it/s, train_loss=0.4183, val_loss=0.5056, val_rmse=0.6927, lr=0.000293]Training TCN:   1%|▏         | 2/150 [00:01<01:54,  1.30it/s, train_loss=0.4183, val_loss=0.5056, val_rmse=0.6927, lr=0.000293]Training TCN:   1%|▏         | 2/150 [00:02<01:54,  1.30it/s, train_loss=0.3748, val_loss=0.4485, val_rmse=0.6545, lr=0.000272]Training TCN:   2%|▏         | 3/150 [00:02<01:50,  1.33it/s, train_loss=0.3748, val_loss=0.4485, val_rmse=0.6545, lr=0.000272]Training TCN:   2%|▏         | 3/150 [00:03<01:50,  1.33it/s, train_loss=0.3490, val_loss=0.4654, val_rmse=0.6666, lr=0.000239]Training TCN:   3%|▎         | 4/150 [00:03<01:48,  1.35it/s, train_loss=0.3490, val_loss=0.4654, val_rmse=0.6666, lr=0.000239]Training TCN:   3%|▎         | 4/150 [00:03<01:48,  1.35it/s, train_loss=0.3340, val_loss=0.4470, val_rmse=0.6515, lr=0.000197]Training TCN:   3%|▎         | 5/150 [00:03<01:46,  1.36it/s, train_loss=0.3340, val_loss=0.4470, val_rmse=0.6515, lr=0.000197]Training TCN:   3%|▎         | 5/150 [00:04<01:46,  1.36it/s, train_loss=0.3193, val_loss=0.4740, val_rmse=0.6718, lr=0.000151]Training TCN:   4%|▍         | 6/150 [00:04<01:44,  1.37it/s, train_loss=0.3193, val_loss=0.4740, val_rmse=0.6718, lr=0.000151]Training TCN:   4%|▍         | 6/150 [00:05<01:44,  1.37it/s, train_loss=0.3146, val_loss=0.4567, val_rmse=0.6591, lr=0.000106]Training TCN:   5%|▍         | 7/150 [00:05<01:45,  1.35it/s, train_loss=0.3146, val_loss=0.4567, val_rmse=0.6591, lr=0.000106]Training TCN:   5%|▍         | 7/150 [00:05<01:45,  1.35it/s, train_loss=0.3063, val_loss=0.4744, val_rmse=0.6705, lr=0.000064]Training TCN:   5%|▌         | 8/150 [00:05<01:43,  1.38it/s, train_loss=0.3063, val_loss=0.4744, val_rmse=0.6705, lr=0.000064]Training TCN:   5%|▌         | 8/150 [00:06<01:43,  1.38it/s, train_loss=0.3023, val_loss=0.4544, val_rmse=0.6556, lr=0.000031]Training TCN:   6%|▌         | 9/150 [00:06<01:41,  1.39it/s, train_loss=0.3023, val_loss=0.4544, val_rmse=0.6556, lr=0.000031]Training TCN:   6%|▌         | 9/150 [00:07<01:41,  1.39it/s, train_loss=0.3004, val_loss=0.4693, val_rmse=0.6662, lr=0.000010]Training TCN:   7%|▋         | 10/150 [00:07<01:40,  1.40it/s, train_loss=0.3004, val_loss=0.4693, val_rmse=0.6662, lr=0.000010]Training TCN:   7%|▋         | 10/150 [00:08<01:40,  1.40it/s, train_loss=0.2999, val_loss=0.4758, val_rmse=0.6709, lr=0.000300]Training TCN:   7%|▋         | 11/150 [00:08<01:38,  1.41it/s, train_loss=0.2999, val_loss=0.4758, val_rmse=0.6709, lr=0.000300]Training TCN:   7%|▋         | 11/150 [00:08<01:38,  1.41it/s, train_loss=0.2965, val_loss=0.4578, val_rmse=0.6588, lr=0.000298]Training TCN:   8%|▊         | 12/150 [00:08<01:37,  1.42it/s, train_loss=0.2965, val_loss=0.4578, val_rmse=0.6588, lr=0.000298]Training TCN:   8%|▊         | 12/150 [00:09<01:37,  1.42it/s, train_loss=0.2929, val_loss=0.4658, val_rmse=0.6629, lr=0.000293]Training TCN:   9%|▊         | 13/150 [00:09<01:36,  1.41it/s, train_loss=0.2929, val_loss=0.4658, val_rmse=0.6629, lr=0.000293]Training TCN:   9%|▊         | 13/150 [00:10<01:36,  1.41it/s, train_loss=0.2827, val_loss=0.4677, val_rmse=0.6636, lr=0.000142]Training TCN:   9%|▉         | 14/150 [00:10<01:35,  1.42it/s, train_loss=0.2827, val_loss=0.4677, val_rmse=0.6636, lr=0.000142]Training TCN:   9%|▉         | 14/150 [00:10<01:35,  1.42it/s, train_loss=0.2757, val_loss=0.4760, val_rmse=0.6684, lr=0.000272]Training TCN:  10%|█         | 15/150 [00:10<01:36,  1.39it/s, train_loss=0.2757, val_loss=0.4760, val_rmse=0.6684, lr=0.000272]Training TCN:  10%|█         | 15/150 [00:11<01:36,  1.39it/s, train_loss=0.2724, val_loss=0.5350, val_rmse=0.7061, lr=0.000257]Training TCN:  11%|█         | 16/150 [00:11<01:36,  1.39it/s, train_loss=0.2724, val_loss=0.5350, val_rmse=0.7061, lr=0.000257]Training TCN:  11%|█         | 16/150 [00:12<01:36,  1.39it/s, train_loss=0.2675, val_loss=0.4826, val_rmse=0.6735, lr=0.000239]Training TCN:  11%|█▏        | 17/150 [00:12<01:35,  1.39it/s, train_loss=0.2675, val_loss=0.4826, val_rmse=0.6735, lr=0.000239]Training TCN:  11%|█▏        | 17/150 [00:13<01:35,  1.39it/s, train_loss=0.2635, val_loss=0.5253, val_rmse=0.7030, lr=0.000219]Training TCN:  12%|█▏        | 18/150 [00:13<01:37,  1.36it/s, train_loss=0.2635, val_loss=0.5253, val_rmse=0.7030, lr=0.000219]Training TCN:  12%|█▏        | 18/150 [00:13<01:37,  1.36it/s, train_loss=0.2608, val_loss=0.5586, val_rmse=0.7242, lr=0.000197]Training TCN:  13%|█▎        | 19/150 [00:13<01:36,  1.36it/s, train_loss=0.2608, val_loss=0.5586, val_rmse=0.7242, lr=0.000197]Training TCN:  13%|█▎        | 19/150 [00:14<01:36,  1.36it/s, train_loss=0.2555, val_loss=0.5295, val_rmse=0.7050, lr=0.000175]Training TCN:  13%|█▎        | 20/150 [00:14<01:36,  1.34it/s, train_loss=0.2555, val_loss=0.5295, val_rmse=0.7050, lr=0.000175]Training TCN:  13%|█▎        | 20/150 [00:15<01:36,  1.34it/s, train_loss=0.2514, val_loss=0.5528, val_rmse=0.7189, lr=0.000151]Training TCN:  14%|█▍        | 21/150 [00:15<01:37,  1.33it/s, train_loss=0.2514, val_loss=0.5528, val_rmse=0.7189, lr=0.000151]Training TCN:  14%|█▍        | 21/150 [00:16<01:37,  1.33it/s, train_loss=0.2485, val_loss=0.5756, val_rmse=0.7342, lr=0.000128]Training TCN:  15%|█▍        | 22/150 [00:16<01:34,  1.36it/s, train_loss=0.2485, val_loss=0.5756, val_rmse=0.7342, lr=0.000128]Training TCN:  15%|█▍        | 22/150 [00:16<01:34,  1.36it/s, train_loss=0.2487, val_loss=0.5823, val_rmse=0.7387, lr=0.000053]Training TCN:  15%|█▌        | 23/150 [00:16<01:35,  1.33it/s, train_loss=0.2487, val_loss=0.5823, val_rmse=0.7387, lr=0.000053]Training TCN:  15%|█▌        | 23/150 [00:17<01:35,  1.33it/s, train_loss=0.2444, val_loss=0.5624, val_rmse=0.7262, lr=0.000084]Training TCN:  16%|█▌        | 24/150 [00:17<01:33,  1.35it/s, train_loss=0.2444, val_loss=0.5624, val_rmse=0.7262, lr=0.000084]Training TCN:  16%|█▌        | 24/150 [00:18<01:33,  1.35it/s, train_loss=0.2413, val_loss=0.5717, val_rmse=0.7327, lr=0.000064]Training TCN:  17%|█▋        | 25/150 [00:18<01:31,  1.36it/s, train_loss=0.2413, val_loss=0.5717, val_rmse=0.7327, lr=0.000064]Training TCN:  17%|█▋        | 25/150 [00:19<01:31,  1.36it/s, train_loss=0.2417, val_loss=0.5984, val_rmse=0.7489, lr=0.000046]Training TCN:  17%|█▋        | 26/150 [00:19<01:30,  1.37it/s, train_loss=0.2417, val_loss=0.5984, val_rmse=0.7489, lr=0.000046]Training TCN:  17%|█▋        | 26/150 [00:19<01:30,  1.37it/s, train_loss=0.2385, val_loss=0.5882, val_rmse=0.7434, lr=0.000031]Training TCN:  18%|█▊        | 27/150 [00:19<01:29,  1.38it/s, train_loss=0.2385, val_loss=0.5882, val_rmse=0.7434, lr=0.000031]Training TCN:  18%|█▊        | 27/150 [00:20<01:29,  1.38it/s, train_loss=0.2362, val_loss=0.5828, val_rmse=0.7399, lr=0.000019]Training TCN:  19%|█▊        | 28/150 [00:20<01:29,  1.36it/s, train_loss=0.2362, val_loss=0.5828, val_rmse=0.7399, lr=0.000019]Training TCN:  19%|█▊        | 28/150 [00:21<01:29,  1.36it/s, train_loss=0.2370, val_loss=0.5931, val_rmse=0.7459, lr=0.000010]Training TCN:  19%|█▉        | 29/150 [00:21<01:29,  1.36it/s, train_loss=0.2370, val_loss=0.5931, val_rmse=0.7459, lr=0.000010]Training TCN:  19%|█▉        | 29/150 [00:21<01:29,  1.36it/s, train_loss=0.2368, val_loss=0.5869, val_rmse=0.7421, lr=0.000005]Training TCN:  19%|█▉        | 29/150 [00:21<01:31,  1.32it/s, train_loss=0.2368, val_loss=0.5869, val_rmse=0.7421, lr=0.000005]
+
+早停触发于 epoch 30
+
+============================================================
+训练历史合并分析（评估模式: R²(越大越好)）：
+  最终保留: R²=0.2290, MSE=0.4244 (epoch 30)
+  累计训练轮数: 30
+============================================================
+
+✅ 已保存改进后的模型至: /root/Wind-direction-time-series-forecasting/models/TCN_multistep_16h.pth
+📝 训练日志已追加至: /root/Wind-direction-time-series-forecasting/logs/TCN_multistep_16h_training_log.jsonl
+
+============================================================
+测试结果: TCN - multistep_16h
+============================================================
+
+总体指标:
+  MSE:  4.2551
+  RMSE: 2.0628
+  MAE:  1.6388
+  R²:   0.4284
+
+各目标指标:
+
+  SpeedAvg_10m:
+    MSE:  2.2623
+    RMSE: 1.5041
+    MAE:  1.2169
+    R²:   0.2773
+
+  SpeedAvg_50m:
+    MSE:  4.5152
+    RMSE: 2.1249
+    MAE:  1.7198
+    R²:   0.2809
+
+  SpeedAvg_100m:
+    MSE:  5.9878
+    RMSE: 2.4470
+    MAE:  1.9796
+    R²:   0.2933
+
+--- 训练 WaveNet ---
+模型参数量: 230,896
+📊 使用超参: lr=0.000300, patience=25, epochs=150, metric=r2
+
+============================================================
+训练 WaveNet - multistep_16h
+============================================================
+设备: cuda
+学习率: 0.0003
+评估模式: R²(越大越好)
+训练轮数: 150
+早停耐心值: 25
+Training WaveNet:   0%|          | 0/150 [00:00<?, ?it/s]Training WaveNet:   0%|          | 0/150 [00:01<?, ?it/s, train_loss=0.5223, val_loss=0.4397, val_rmse=0.6519, lr=0.000300]Training WaveNet:   1%|          | 1/150 [00:01<03:00,  1.21s/it, train_loss=0.5223, val_loss=0.4397, val_rmse=0.6519, lr=0.000300]Training WaveNet:   1%|          | 1/150 [00:02<03:00,  1.21s/it, train_loss=0.2680, val_loss=0.4637, val_rmse=0.6663, lr=0.000293]Training WaveNet:   1%|▏         | 2/150 [00:02<02:53,  1.17s/it, train_loss=0.2680, val_loss=0.4637, val_rmse=0.6663, lr=0.000293]Training WaveNet:   1%|▏         | 2/150 [00:03<02:53,  1.17s/it, train_loss=0.2238, val_loss=0.4711, val_rmse=0.6678, lr=0.000272]Training WaveNet:   2%|▏         | 3/150 [00:03<02:51,  1.17s/it, train_loss=0.2238, val_loss=0.4711, val_rmse=0.6678, lr=0.000272]Training WaveNet:   2%|▏         | 3/150 [00:04<02:51,  1.17s/it, train_loss=0.1950, val_loss=0.5265, val_rmse=0.7052, lr=0.000239]Training WaveNet:   3%|▎         | 4/150 [00:04<02:50,  1.17s/it, train_loss=0.1950, val_loss=0.5265, val_rmse=0.7052, lr=0.000239]Training WaveNet:   3%|▎         | 4/150 [00:05<02:50,  1.17s/it, train_loss=0.1743, val_loss=0.6244, val_rmse=0.7611, lr=0.000197]Training WaveNet:   3%|▎         | 5/150 [00:05<02:46,  1.15s/it, train_loss=0.1743, val_loss=0.6244, val_rmse=0.7611, lr=0.000197]Training WaveNet:   3%|▎         | 5/150 [00:07<02:46,  1.15s/it, train_loss=0.1550, val_loss=0.6544, val_rmse=0.7819, lr=0.000151]Training WaveNet:   4%|▍         | 6/150 [00:07<02:48,  1.17s/it, train_loss=0.1550, val_loss=0.6544, val_rmse=0.7819, lr=0.000151]Training WaveNet:   4%|▍         | 6/150 [00:08<02:48,  1.17s/it, train_loss=0.1418, val_loss=0.6341, val_rmse=0.7692, lr=0.000106]Training WaveNet:   5%|▍         | 7/150 [00:08<02:46,  1.17s/it, train_loss=0.1418, val_loss=0.6341, val_rmse=0.7692, lr=0.000106]Training WaveNet:   5%|▍         | 7/150 [00:09<02:46,  1.17s/it, train_loss=0.1355, val_loss=0.6615, val_rmse=0.7844, lr=0.000064]Training WaveNet:   5%|▌         | 8/150 [00:09<02:45,  1.16s/it, train_loss=0.1355, val_loss=0.6615, val_rmse=0.7844, lr=0.000064]Training WaveNet:   5%|▌         | 8/150 [00:10<02:45,  1.16s/it, train_loss=0.1261, val_loss=0.6555, val_rmse=0.7805, lr=0.000031]Training WaveNet:   6%|▌         | 9/150 [00:10<02:45,  1.17s/it, train_loss=0.1261, val_loss=0.6555, val_rmse=0.7805, lr=0.000031]Training WaveNet:   6%|▌         | 9/150 [00:11<02:45,  1.17s/it, train_loss=0.1225, val_loss=0.6795, val_rmse=0.7946, lr=0.000005]Training WaveNet:   7%|▋         | 10/150 [00:11<02:43,  1.17s/it, train_loss=0.1225, val_loss=0.6795, val_rmse=0.7946, lr=0.000005]Training WaveNet:   7%|▋         | 10/150 [00:12<02:43,  1.17s/it, train_loss=0.1220, val_loss=0.6840, val_rmse=0.7966, lr=0.000300]Training WaveNet:   7%|▋         | 11/150 [00:12<02:40,  1.16s/it, train_loss=0.1220, val_loss=0.6840, val_rmse=0.7966, lr=0.000300]Training WaveNet:   7%|▋         | 11/150 [00:13<02:40,  1.16s/it, train_loss=0.1308, val_loss=0.6961, val_rmse=0.8088, lr=0.000298]Training WaveNet:   8%|▊         | 12/150 [00:13<02:39,  1.15s/it, train_loss=0.1308, val_loss=0.6961, val_rmse=0.8088, lr=0.000298]Training WaveNet:   8%|▊         | 12/150 [00:15<02:39,  1.15s/it, train_loss=0.1239, val_loss=0.6945, val_rmse=0.8092, lr=0.000293]Training WaveNet:   9%|▊         | 13/150 [00:15<02:34,  1.13s/it, train_loss=0.1239, val_loss=0.6945, val_rmse=0.8092, lr=0.000293]Training WaveNet:   9%|▊         | 13/150 [00:16<02:34,  1.13s/it, train_loss=0.1191, val_loss=0.7854, val_rmse=0.8539, lr=0.000284]Training WaveNet:   9%|▉         | 14/150 [00:16<02:32,  1.12s/it, train_loss=0.1191, val_loss=0.7854, val_rmse=0.8539, lr=0.000284]Training WaveNet:   9%|▉         | 14/150 [00:17<02:32,  1.12s/it, train_loss=0.1119, val_loss=0.7116, val_rmse=0.8176, lr=0.000272]Training WaveNet:  10%|█         | 15/150 [00:17<02:32,  1.13s/it, train_loss=0.1119, val_loss=0.7116, val_rmse=0.8176, lr=0.000272]Training WaveNet:  10%|█         | 15/150 [00:18<02:32,  1.13s/it, train_loss=0.1049, val_loss=0.6887, val_rmse=0.8030, lr=0.000257]Training WaveNet:  11%|█         | 16/150 [00:18<02:31,  1.13s/it, train_loss=0.1049, val_loss=0.6887, val_rmse=0.8030, lr=0.000257]Training WaveNet:  11%|█         | 16/150 [00:19<02:31,  1.13s/it, train_loss=0.1033, val_loss=0.6850, val_rmse=0.8001, lr=0.000239]Training WaveNet:  11%|█▏        | 17/150 [00:19<02:30,  1.13s/it, train_loss=0.1033, val_loss=0.6850, val_rmse=0.8001, lr=0.000239]Training WaveNet:  11%|█▏        | 17/150 [00:20<02:30,  1.13s/it, train_loss=0.0989, val_loss=0.7400, val_rmse=0.8347, lr=0.000219]Training WaveNet:  12%|█▏        | 18/150 [00:20<02:28,  1.12s/it, train_loss=0.0989, val_loss=0.7400, val_rmse=0.8347, lr=0.000219]Training WaveNet:  12%|█▏        | 18/150 [00:21<02:28,  1.12s/it, train_loss=0.0956, val_loss=0.7509, val_rmse=0.8386, lr=0.000099]Training WaveNet:  13%|█▎        | 19/150 [00:21<02:27,  1.13s/it, train_loss=0.0956, val_loss=0.7509, val_rmse=0.8386, lr=0.000099]Training WaveNet:  13%|█▎        | 19/150 [00:22<02:27,  1.13s/it, train_loss=0.0901, val_loss=0.7129, val_rmse=0.8169, lr=0.000175]Training WaveNet:  13%|█▎        | 20/150 [00:22<02:27,  1.13s/it, train_loss=0.0901, val_loss=0.7129, val_rmse=0.8169, lr=0.000175]Training WaveNet:  13%|█▎        | 20/150 [00:24<02:27,  1.13s/it, train_loss=0.0892, val_loss=0.7231, val_rmse=0.8243, lr=0.000151]Training WaveNet:  14%|█▍        | 21/150 [00:24<02:23,  1.12s/it, train_loss=0.0892, val_loss=0.7231, val_rmse=0.8243, lr=0.000151]Training WaveNet:  14%|█▍        | 21/150 [00:25<02:23,  1.12s/it, train_loss=0.0873, val_loss=0.7190, val_rmse=0.8220, lr=0.000128]Training WaveNet:  15%|█▍        | 22/150 [00:25<02:21,  1.11s/it, train_loss=0.0873, val_loss=0.7190, val_rmse=0.8220, lr=0.000128]Training WaveNet:  15%|█▍        | 22/150 [00:26<02:21,  1.11s/it, train_loss=0.0846, val_loss=0.7234, val_rmse=0.8230, lr=0.000106]Training WaveNet:  15%|█▌        | 23/150 [00:26<02:19,  1.10s/it, train_loss=0.0846, val_loss=0.7234, val_rmse=0.8230, lr=0.000106]Training WaveNet:  15%|█▌        | 23/150 [00:27<02:19,  1.10s/it, train_loss=0.0820, val_loss=0.7370, val_rmse=0.8313, lr=0.000084]Training WaveNet:  16%|█▌        | 24/150 [00:27<02:23,  1.14s/it, train_loss=0.0820, val_loss=0.7370, val_rmse=0.8313, lr=0.000084]Training WaveNet:  16%|█▌        | 24/150 [00:28<02:23,  1.14s/it, train_loss=0.0816, val_loss=0.7121, val_rmse=0.8188, lr=0.000064]Training WaveNet:  17%|█▋        | 25/150 [00:28<02:20,  1.13s/it, train_loss=0.0816, val_loss=0.7121, val_rmse=0.8188, lr=0.000064]Training WaveNet:  17%|█▋        | 25/150 [00:29<02:20,  1.13s/it, train_loss=0.0809, val_loss=0.7324, val_rmse=0.8293, lr=0.000046]Training WaveNet:  17%|█▋        | 25/150 [00:29<02:27,  1.18s/it, train_loss=0.0809, val_loss=0.7324, val_rmse=0.8293, lr=0.000046]
+
+早停触发于 epoch 26
+
+============================================================
+训练历史合并分析（评估模式: R²(越大越好)）：
+  最终保留: R²=0.2281, MSE=0.4249 (epoch 26)
+  累计训练轮数: 26
+============================================================
+
+✅ 已保存改进后的模型至: /root/Wind-direction-time-series-forecasting/models/WaveNet_multistep_16h.pth
+📝 训练日志已追加至: /root/Wind-direction-time-series-forecasting/logs/WaveNet_multistep_16h_training_log.jsonl
+
+============================================================
+测试结果: WaveNet - multistep_16h
+============================================================
+
+总体指标:
+  MSE:  3.9190
+  RMSE: 1.9796
+  MAE:  1.5598
+  R²:   0.4735
+
+各目标指标:
+
+  SpeedAvg_10m:
+    MSE:  2.0804
+    RMSE: 1.4424
+    MAE:  1.1605
+    R²:   0.3354
+
+  SpeedAvg_50m:
+    MSE:  4.1798
+    RMSE: 2.0444
+    MAE:  1.6399
+    R²:   0.3343
+
+  SpeedAvg_100m:
+    MSE:  5.4967
+    RMSE: 2.3445
+    MAE:  1.8790
+    R²:   0.3513
+
+======================================================================
+步骤4: 模型性能对比
+======================================================================
+
+对比结果已保存至: /root/Wind-direction-time-series-forecasting/results/model_comparison.csv
+
+模型性能对比:
+         Model          Task      MSE     RMSE      MAE       R2
+Attention_LSTM multistep_16h 4.282909 2.069519 1.643713 0.424635
+      CNN_LSTM multistep_16h 4.105912 2.026305 1.604908 0.448412
+          LSTM multistep_16h 3.632687 1.905961 1.494500 0.511985
+        Linear multistep_16h 3.543982 1.882547 1.486220 0.523902
+           TCN multistep_16h 4.255098 2.062789 1.638763 0.428371
+   Transformer multistep_16h 4.059577 2.014839 1.599103 0.454637
+       WaveNet multistep_16h 3.918972 1.979639 1.559784 0.473526
+
+======================================================================
+步骤5: 生成实验报告
+======================================================================
+Traceback (most recent call last):
+  File "/root/Wind-direction-time-series-forecasting/venv/lib/python3.12/site-packages/pandas/compat/_optional.py", line 135, in import_optional_dependency
+    module = importlib.import_module(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/vipuser/miniconda3/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'tabulate'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/root/Wind-direction-time-series-forecasting/main.py", line 609, in <module>
+    main(args)
+  File "/root/Wind-direction-time-series-forecasting/main.py", line 569, in main
+    generate_report(results_df, all_results)
+  File "/root/Wind-direction-time-series-forecasting/main.py", line 460, in generate_report
+    f.write(full_results_df.to_markdown(index=False))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Wind-direction-time-series-forecasting/venv/lib/python3.12/site-packages/pandas/util/_decorators.py", line 333, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Wind-direction-time-series-forecasting/venv/lib/python3.12/site-packages/pandas/core/frame.py", line 2994, in to_markdown
+    tabulate = import_optional_dependency("tabulate")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Wind-direction-time-series-forecasting/venv/lib/python3.12/site-packages/pandas/compat/_optional.py", line 138, in import_optional_dependency
+    raise ImportError(msg)
+ImportError: Missing optional dependency 'tabulate'.  Use pip or conda to install tabulate.
