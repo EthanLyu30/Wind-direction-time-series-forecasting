@@ -1,13 +1,13 @@
 # Wind Speed Prediction Experiment Report
 
-Generated: 2025-12-30 17:03:25
+Generated: 2025-12-30 17:37:34
 
 ## 1. Experiment Configuration
 
 - Device: cuda
 - Batch Size: 512
-- Max Epochs: 1500
-- Learning Rate: 0.05
+- Max Epochs: 500
+- Learning Rate: 0.008
 - Random Seed: 42
 
 ## 2. Task Configuration
@@ -27,7 +27,7 @@ Generated: 2025-12-30 17:03:25
 | CNN_LSTM        | singlestep    | 0.891205 | 0.944037 | 0.722117 | 0.879781 |
 | DLinear         | singlestep    | 0.839374 | 0.916174 | 0.680348 | 0.886773 |
 | HeightAttention | singlestep    | 0.856736 | 0.9256   | 0.701066 | 0.884431 |
-| LSTM            | singlestep    | 0.854254 | 0.9243   | 0.6948   | 0.8848   |
+| LSTM            | singlestep    | 0.837983 | 0.915414 | 0.695138 | 0.886961 |
 | LSTNet          | singlestep    | 0.876975 | 0.936469 | 0.714991 | 0.881701 |
 | Linear          | singlestep    | 0.858833 | 0.9267   | 0.706    | 0.8841   |
 | Persistence     | singlestep    | 0.858553 | 0.926581 | 0.68688  | 0.884186 |
@@ -41,7 +41,7 @@ Generated: 2025-12-30 17:03:25
 | HeightAttention | multistep_16h | 3.47485  | 1.8641   | 1.45717  | 0.533189 |
 | LSTM            | multistep_16h | 3.55428  | 1.8853   | 1.4937   | 0.5225   |
 | LSTNet          | multistep_16h | 3.74718  | 1.93576  | 1.50591  | 0.496604 |
-| Linear          | multistep_16h | 3.60898  | 1.8997   | 1.5101   | 0.5152   |
+| Linear          | multistep_16h | 3.58261  | 1.89278  | 1.47767  | 0.518712 |
 | Persistence     | multistep_16h | 3.89446  | 1.97344  | 1.49066  | 0.476818 |
 | TCN             | multistep_16h | 3.61654  | 1.90172  | 1.49757  | 0.514155 |
 | Transformer     | multistep_16h | 4.05958  | 2.0148   | 1.5991   | 0.4546   |
@@ -51,7 +51,7 @@ Generated: 2025-12-30 17:03:25
 
 ## 4. Best Models
 
-- **Single-step Prediction (8h -> 1h)**: DLinear (RMSE: 0.9162, R²: 0.8868)
+- **Single-step Prediction (8h -> 1h)**: LSTM (RMSE: 0.9154, R²: 0.8870)
 - **Multi-step Prediction (8h -> 16h)**: WaveNet (RMSE: 1.8555, R²: 0.5375)
 
 ## 5. Innovation Points
