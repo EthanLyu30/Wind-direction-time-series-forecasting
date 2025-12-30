@@ -143,8 +143,8 @@ INNOVATIVE_MODELS = ['CNN_LSTM', 'TCN', 'WaveNet', 'LSTNet']
 # 高级创新模型（利用多高度空间结构）
 ADVANCED_MODELS = ['HeightAttention', 'DLinear']
 
-# 简单基线模型（极少参数，适合小数据集）
-SIMPLE_MODELS = ['Persistence', 'MovingAvg', 'SimpleLinear', 'LastValueLinear', 'ExpSmoothing', 'WindShear']
+# 简单基线模型（极少参数，适合小数据集，有创新价值）
+SIMPLE_MODELS = ['Persistence', 'WindShear', 'TrendLinear']
 
 
 def setup_experiment():
