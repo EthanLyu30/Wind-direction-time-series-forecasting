@@ -367,9 +367,18 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
     }
     
     if previous_history is not None:
-        history['train_loss'] = previous_history.get('train_loss', [])
-        history['val_loss'] = previous_history.get('val_loss', [])
-        history['val_metrics'] = previous_history.get('val_metrics', [])
+        # 重要修复：history 的列表保持为空，只存储本次训练的新数据
+        # 之前的 bug 是直接引用赋值 history['train_loss'] = previous_history['train_loss']
+        # 导致两者指向同一个列表，append 后合并时出现 same_list + same_list = 双倍数据
+        # 
+        # 正确逻辑：
+        # 1. history['train_loss'] 保持为空列表，只存本次新训练的 epoch 数据
+        # 2. 训练结束后在 merge 阶段合并：previous + history = 完整历史
+        # 
+        # 注意：列表字段保持空（不从 previous 复制），非列表字段需要恢复
+        # history['train_loss'] = []  # 保持空，已在上面初始化
+        # history['val_loss'] = []    # 保持空
+        # history['val_metrics'] = [] # 保持空
         history['best_epoch'] = previous_history.get('best_epoch', 0)
         history['best_val_loss'] = previous_history.get('best_val_loss', float('inf'))  # 关键：保留历史最佳
         history['training_time'] = previous_history.get('training_time', 0)
@@ -489,7 +498,9 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
         if current_best_score > prev_best_score:
             # 本次训练产生了更好的模型
             best_val_loss = history['best_val_loss']
-            best_epoch = start_epoch + history['best_epoch']  # 调整epoch编号
+            # 注意：history['best_epoch'] 已经是全局 epoch 编号了（在 line 458 设置为 actual_epoch + 1）
+            # 不需要再加 start_epoch
+            best_epoch = history['best_epoch']
             best_model_state = current_best_model_state
             best_r2 = history.get('best_r2', early_stopping.get_best_r2())
             history_improved = True
@@ -538,7 +549,8 @@ def train_model(model, train_loader, val_loader, model_name, task_name,
             current_best_loss = history['best_val_loss']
 
             print(f"  历史最佳: R²={prev_best_r2:.4f}, MSE={prev_best_loss:.4f} (epoch {previous_history.get('best_epoch', '?')})")
-            print(f"  本次最佳: R²={current_best_r2:.4f}, MSE={current_best_loss:.4f} (epoch {start_epoch + history['best_epoch']})")
+            # 注意：history['best_epoch'] 已经是全局 epoch 编号了，不需要再加 start_epoch
+            print(f"  本次最佳: R²={current_best_r2:.4f}, MSE={current_best_loss:.4f} (epoch {history['best_epoch']})")
 
             if history_improved:
                 if metric_mode == 'mse':
