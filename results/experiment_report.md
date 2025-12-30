@@ -1,13 +1,13 @@
 # Wind Speed Prediction Experiment Report
 
-Generated: 2025-12-30 12:25:36
+Generated: 2025-12-30 14:02:08
 
 ## 1. Experiment Configuration
 
 - Device: cuda
 - Batch Size: 512
-- Max Epochs: 2000
-- Learning Rate: 5e-05
+- Max Epochs: 800
+- Learning Rate: 0.0005
 - Random Seed: 42
 
 ## 2. Task Configuration
@@ -30,18 +30,24 @@ Generated: 2025-12-30 12:25:36
 | LSTM            | singlestep    | 0.854254 | 0.9243   | 0.6948   | 0.8848   |
 | LSTNet          | singlestep    | 0.898757 | 0.948    | 0.7225   | 0.8788   |
 | Linear          | singlestep    | 0.858833 | 0.9267   | 0.706    | 0.8841   |
+| Persistence     | singlestep    | 0.858553 | 0.926581 | 0.68688  | 0.884186 |
 | TCN             | singlestep    | 0.874418 | 0.9351   | 0.7026   | 0.882    |
 | Transformer     | singlestep    | 0.891391 | 0.9441   | 0.7077   | 0.8798   |
+| TrendLinear     | singlestep    | 0.871079 | 0.933316 | 0.69689  | 0.882496 |
 | WaveNet         | singlestep    | 0.908046 | 0.9529   | 0.722    | 0.8775   |
+| WindShear       | singlestep    | 0.88967  | 0.943223 | 0.704111 | 0.879988 |
 | CNN_LSTM        | multistep_16h | 3.98992  | 1.9975   | 1.5828   | 0.464    |
 | DLinear         | multistep_16h | 3.85336  | 1.963    | 1.54302  | 0.482341 |
 | HeightAttention | multistep_16h | 4.69292  | 2.16631  | 1.7201   | 0.369554 |
 | LSTM            | multistep_16h | 3.55428  | 1.8853   | 1.4937   | 0.5225   |
 | LSTNet          | multistep_16h | 4.44139  | 2.1075   | 1.6274   | 0.4033   |
 | Linear          | multistep_16h | 3.60898  | 1.8997   | 1.5101   | 0.5152   |
+| Persistence     | multistep_16h | 3.89446  | 1.97344  | 1.49066  | 0.476818 |
 | TCN             | multistep_16h | 4.16839  | 2.0417   | 1.6304   | 0.44     |
 | Transformer     | multistep_16h | 4.05958  | 2.0148   | 1.5991   | 0.4546   |
+| TrendLinear     | multistep_16h | 4.03091  | 2.00771  | 1.59502  | 0.458489 |
 | WaveNet         | multistep_16h | 3.80249  | 1.95     | 1.5346   | 0.4892   |
+| WindShear       | multistep_16h | 3.86105  | 1.96495  | 1.49117  | 0.481308 |
 
 ## 4. Best Models
 
