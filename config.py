@@ -4,6 +4,14 @@
 """
 import os
 import sys
+# ==================== 解决服务器无图形界面问题（必须最先执行）====================
+# 在无头Linux服务器上设置环境变量，避免Qt插件错误
+if sys.platform.startswith('linux'):
+    if not os.environ.get('DISPLAY'):
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+        # 设置matplotlib后端为Agg（如果还没设置）
+        import matplotlib
+        matplotlib.use('Agg')
 import torch
 
 # ==================== 设备自动检测 ====================
@@ -69,8 +77,8 @@ SINGLE_STEP_OUTPUT_LEN = 1  # 输出序列长度（1小时）
 MULTI_STEP_1_INPUT_LEN = 8
 MULTI_STEP_1_OUTPUT_LEN = 1
 
-# 多步预测配置 - 任务2：8小时预测16小时
-MULTI_STEP_2_INPUT_LEN = 8
+# 多步预测配置 - 任务2：24小时预测16小时（增加输入窗口改善长期预测）
+MULTI_STEP_2_INPUT_LEN = 24  # 增加到24小时，提供更多历史信息
 MULTI_STEP_2_OUTPUT_LEN = 16
 
 # ==================== 数据集划分配置 ====================
@@ -99,6 +107,35 @@ NUM_EPOCHS = 100
 EARLY_STOPPING_PATIENCE = 15
 WEIGHT_DECAY = 1e-5
 
+# ==================== 任务特定的超参优化 ====================
+# 不同任务需要不同的学习率和早停耐心值
+TASK_SPECIFIC_HYPERPARAMS = {
+    'singlestep': {
+        'lr': 0.001,          # 短期预测：正常学习率
+        'patience': 15,       # 标准早停
+        'min_epochs': 50,     # 至少训练50个epoch
+    },
+    'multistep_1h': {
+        'lr': 0.0008,         # 多步1h：略降学习率
+        'patience': 18,       # 略宽松
+        'min_epochs': 60,
+    },
+    'multistep_16h': {
+        'lr': 0.0003,         # 长期预测：显著降低学习率（关键！）
+        'patience': 25,       # 宽松早停，允许更多探索
+        'min_epochs': 80,     # 至少训练80个epoch
+    }
+}
+
+# 根据batch_size自动调整学习率（线性缩放）
+def get_adjusted_lr(base_lr, batch_size):
+    """
+    根据batch_size调整学习率
+    线性缩放法则: lr = base_lr * (batch_size / 128)
+    """
+    reference_batch = 128
+    return base_lr * (batch_size / reference_batch)
+
 print(f"⚙️  Batch Size: {BATCH_SIZE}")
 
 # ==================== 模型配置 ====================
@@ -110,45 +147,54 @@ LINEAR_CONFIG = {
 
 # LSTM模型配置
 LSTM_CONFIG = {
-    'hidden_size': 128,
-    'num_layers': 2,
-    'dropout': 0.2,
+    'hidden_size': 256,      # 增大隐藏层（原128）
+    'num_layers': 3,         # 增加层数（原2）
+    'dropout': 0.3,          # 增加dropout防止过拟合
     'bidirectional': True,
 }
 
 # Transformer模型配置
 TRANSFORMER_CONFIG = {
-    'd_model': 64,
-    'nhead': 4,
-    'num_encoder_layers': 3,
-    'num_decoder_layers': 3,
-    'dim_feedforward': 256,
-    'dropout': 0.1,
+    'd_model': 128,            # 增大模型维度（原64）
+    'nhead': 8,                # 增加注意力头数（原4）
+    'num_encoder_layers': 4,   # 增加层数（原3）
+    'num_decoder_layers': 4,   # 增加层数（原3）
+    'dim_feedforward': 512,    # 增大前馈层（原256）
+    'dropout': 0.2,            # 增加dropout
 }
 
 # ==================== 创新模型配置 ====================
 # CNN-LSTM混合模型配置
 CNN_LSTM_CONFIG = {
-    'cnn_channels': [32, 64],
+    'cnn_channels': [32, 32],      # 减少通道数（原[32,64]）
     'kernel_size': 3,
-    'lstm_hidden_size': 64,
-    'lstm_num_layers': 2,
-    'dropout': 0.2,
+    'lstm_hidden_size': 64,        # 减少隐藏单元（原64，已合理）
+    'lstm_num_layers': 2,          # 减少层数（原2，已合理）
+    'dropout': 0.3,                # 增加dropout防止过拟合（原0.2）
 }
 
 # Attention-LSTM模型配置
 ATTENTION_LSTM_CONFIG = {
-    'hidden_size': 128,
-    'num_layers': 2,
-    'attention_heads': 4,
-    'dropout': 0.2,
+    'hidden_size': 96,             # 减少隐藏单元（原128）
+    'num_layers': 2,               # 保持2层（足够了）
+    'attention_heads': 4,          # 减少头数（原4，已合理）
+    'dropout': 0.3,                # 增加dropout（原0.2）
 }
 
 # TCN (Temporal Convolutional Network) 配置
+# 优化版本：减少通道数以加快训练速度
 TCN_CONFIG = {
-    'num_channels': [64, 128, 256],
+    'num_channels': [32, 64, 64],  # 保持通道数（已优化）
     'kernel_size': 3,
-    'dropout': 0.2,
+    'dropout': 0.3,                # 增加dropout（原0.2）
+}
+
+# WaveNet模型配置
+WAVENET_CONFIG = {
+    'num_channels': 64,            # 减少通道数（原64，已合理）
+    'num_blocks': 8,               # 保持块数（8个已足够）
+    'kernel_size': 2,              # 保持卷积核（标准设置）
+    'dropout': 0.3,                # 增加dropout防止过拟合
 }
 
 # 集成模型配置
