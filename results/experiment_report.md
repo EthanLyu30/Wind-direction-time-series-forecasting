@@ -1,12 +1,12 @@
-# 风速时间序列预测实验报告
+# Wind Speed Prediction Experiment Report
 
-Generated: 2025-12-29 17:37:10
+Generated: 2025-12-30 12:25:36
 
-## 1. 实验配置
+## 1. Experiment Configuration
 
-- 设备: CUDA (NVIDIA A100-SXM4-40GB)
+- Device: cuda
 - Batch Size: 512
-- Max Epochs: 500
+- Max Epochs: 2000
 - Learning Rate: 5e-05
 - Random Seed: 42
 
@@ -22,24 +22,26 @@ Generated: 2025-12-29 17:37:10
 
 ## 3. Model Performance Comparison
 
-| Model       | Task          |      MSE |     RMSE |      MAE |       R2 |
-|:------------|:--------------|---------:|---------:|---------:|---------:|
-| CNN_LSTM    | singlestep    | 0.904447 | 0.951024 | 0.722667 | 0.877995 |
-| LSTM        | singlestep    | 0.854254 | 0.924259 | 0.694755 | 0.884766 |
-| LSTNet      | singlestep    | 0.898757 | 0.948028 | 0.722531 | 0.878762 |
-| Linear      | singlestep    | 0.858833 | 0.926732 | 0.706027 | 0.884148 |
-| NBEATS      | singlestep    | 1.16628  | 1.07995  | 0.833252 | 0.842675 |
-| TCN         | singlestep    | 0.874418 | 0.935103 | 0.702591 | 0.882046 |
-| Transformer | singlestep    | 0.891391 | 0.944135 | 0.707706 | 0.879756 |
-| WaveNet     | singlestep    | 0.908046 | 0.952915 | 0.722007 | 0.877509 |
-| CNN_LSTM    | multistep_16h | 3.98992  | 1.99748  | 1.58276  | 0.463995 |
-| LSTM        | multistep_16h | 3.55428  | 1.88528  | 1.49368  | 0.522519 |
-| LSTNet      | multistep_16h | 4.44139  | 2.10746  | 1.6274   | 0.403345 |
-| Linear      | multistep_16h | 3.60898  | 1.89973  | 1.51013  | 0.51517  |
-| NBEATS      | multistep_16h | 4.78301  | 2.18701  | 1.70261  | 0.357451 |
-| TCN         | multistep_16h | 4.16839  | 2.04166  | 1.63044  | 0.440019 |
-| Transformer | multistep_16h | 4.05958  | 2.01484  | 1.5991   | 0.454637 |
-| WaveNet     | multistep_16h | 3.80249  | 1.95     | 1.53455  | 0.489174 |
+| Model           | Task          |      MSE |     RMSE |      MAE |       R2 |
+|:----------------|:--------------|---------:|---------:|---------:|---------:|
+| CNN_LSTM        | singlestep    | 0.904447 | 0.951    | 0.7227   | 0.878    |
+| DLinear         | singlestep    | 0.859821 | 0.927266 | 0.692295 | 0.884015 |
+| HeightAttention | singlestep    | 1.08112  | 1.03977  | 0.798756 | 0.854162 |
+| LSTM            | singlestep    | 0.854254 | 0.9243   | 0.6948   | 0.8848   |
+| LSTNet          | singlestep    | 0.898757 | 0.948    | 0.7225   | 0.8788   |
+| Linear          | singlestep    | 0.858833 | 0.9267   | 0.706    | 0.8841   |
+| TCN             | singlestep    | 0.874418 | 0.9351   | 0.7026   | 0.882    |
+| Transformer     | singlestep    | 0.891391 | 0.9441   | 0.7077   | 0.8798   |
+| WaveNet         | singlestep    | 0.908046 | 0.9529   | 0.722    | 0.8775   |
+| CNN_LSTM        | multistep_16h | 3.98992  | 1.9975   | 1.5828   | 0.464    |
+| DLinear         | multistep_16h | 3.85336  | 1.963    | 1.54302  | 0.482341 |
+| HeightAttention | multistep_16h | 4.69292  | 2.16631  | 1.7201   | 0.369554 |
+| LSTM            | multistep_16h | 3.55428  | 1.8853   | 1.4937   | 0.5225   |
+| LSTNet          | multistep_16h | 4.44139  | 2.1075   | 1.6274   | 0.4033   |
+| Linear          | multistep_16h | 3.60898  | 1.8997   | 1.5101   | 0.5152   |
+| TCN             | multistep_16h | 4.16839  | 2.0417   | 1.6304   | 0.44     |
+| Transformer     | multistep_16h | 4.05958  | 2.0148   | 1.5991   | 0.4546   |
+| WaveNet         | multistep_16h | 3.80249  | 1.95     | 1.5346   | 0.4892   |
 
 ## 4. Best Models
 
