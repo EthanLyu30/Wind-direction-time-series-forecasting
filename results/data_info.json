@@ -1,0 +1,39 @@
+{
+  "shape": [
+    10573,
+    26
+  ],
+  "columns": [
+    "Date & Time Stamp",
+    "SpeedAvg_10m",
+    "SpeedAvg_50m",
+    "SpeedAvg_100m",
+    "DirectionAvg_10m",
+    "DirectionAvg_50m",
+    "DirectionAvg_100m",
+    "TemperatureAvg_10m",
+    "TemperatureAvg_50m",
+    "TemperatureAvg_100m",
+    "PressureAvg_10m",
+    "PressureAvg_50m",
+    "PressureAvg_100m",
+    "HumidtyAvg_10m",
+    "HumidtyAvg_50m",
+    "HumidtyAvg_100m",
+    "hour",
+    "day_of_week",
+    "month",
+    "day_of_year",
+    "hour_sin",
+    "hour_cos",
+    "day_sin",
+    "day_cos",
+    "month_sin",
+    "month_cos"
+  ],
+  "date_range": [
+    "2016-11-19 13:50:00",
+    "2017-01-31 23:50:00"
+  ],
+  "num_samples": 10573
+}
